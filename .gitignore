@@ -1,0 +1,7 @@
+**/disk_input
+**/dustorbit
+**/images
+**/parentorbit
+**/.DS_Store
+./debris-disk/codes/launchpoints.txt
+./debris-disk/codes/backgroundlaunchpoints.txt

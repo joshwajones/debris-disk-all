@@ -5,3 +5,9 @@
 **/.DS_Store
 ./debris-disk/codes/launchpoints.txt
 ./debris-disk/codes/backgroundlaunchpoints.txt
+**/launchpoints.txt
+**/backgroundlaunchpoints.txt
+**/codes/backgroundlaunchpoints.txt
+debris-disk/codes/backgroundlaunchpoints.txt
+/debris-disk/codes/backgroundlaunchpoints.txt
+**/debris-disk/codes/backgroundlaunchpoints.txt

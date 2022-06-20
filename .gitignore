@@ -11,3 +11,5 @@
 debris-disk/codes/backgroundlaunchpoints.txt
 /debris-disk/codes/backgroundlaunchpoints.txt
 **/debris-disk/codes/backgroundlaunchpoints.txt
+**/__pychache
+debris-disk/plots/background_circular_standard/output_files/

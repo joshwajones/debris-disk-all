@@ -239,6 +239,10 @@ class DebrisDisk:
                 # all at peri
                 cosfp = np.ones(Nlaunch)
                 sinfp = np.zeros(Nlaunch)
+            elif self.inputdata["launchstyle"] == 5:
+                # all from quadrature
+                cosfp = np.zeros(Nlaunch)
+                sinfp = np.ones(Nlaunch)
 
             if self.inputdata["betadistrb"] != 0:
                 for j in range(len(cosfp)):  # for each dust grain

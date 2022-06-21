@@ -79,6 +79,8 @@ class DebrisDisk:
         # amin, amax: min, max semi-major axes of parent bodies
         # I0, e0: initial mutual inclination and eccentricities
         # Omega0, omega0: initial nodal angle and argument of periapse
+        if "Nlaunch" not in self.inputdata or "Nparticales" not in self.inputdata or self.inputdata["Nlaunch"] <= 0 or self.inputdata["Nparticles"] <= 0:
+            return
         print("Computing Parent Orbits (single planet)...")
         if self.freeelem:
             self.a, self.I0, self.e0, self.Omega0, self.omega0 = np.loadtxt(self.freeelemtxt, unpack=True)
@@ -156,11 +158,11 @@ class DebrisDisk:
             self.q = Ifree * np.cos(self.B * self.age + gamma) + self.q0
         else:
             efree = nr.uniform(0, self.inputdata["e0"], int(self.inputdata["Nparticles"]))
-            # Ifree = nr.uniform(
-            #     np.max((0, self.inputdata["Icent"] * np.pi / 180. - self.inputdata["I0"] * np.pi / 180.)), \
-            #     self.inputdata["I0"] * np.pi / 180. + self.inputdata["Icent"] * np.pi / 180.,
-            #     int(self.inputdata["Nparticles"]))
-            Ifree = nr.uniform(-0.2, 0.2, int(self.inputdata["Nparticles"]))
+            Ifree = nr.uniform(
+                np.max((0, self.inputdata["Icent"] * np.pi / 180. - self.inputdata["I0"] * np.pi / 180.)), \
+                self.inputdata["I0"] * np.pi / 180. + self.inputdata["Icent"] * np.pi / 180.,
+                int(self.inputdata["Nparticles"]))
+            #Ifree = nr.uniform(-0.2, 0.2, int(self.inputdata["Nparticles"])) #random inclination
             # omega = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nparticles"]))
             # Omega = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nparticles"])) # SHOULD OMEGA BE CHANGED
             omega = np.zeros(int(self.inputdata["Nparticles"]))
@@ -170,6 +172,8 @@ class DebrisDisk:
             self.k = efree * np.cos(omega + Omega) + self.k0
             self.p = Ifree * np.sin(Omega) + self.p0
             self.q = Ifree * np.cos(Omega) + self.q0
+        self.ComputeParentOrbital()
+        self.ComputeDustGrains()
 
     def ComputeParentOrbital(self):
         # Compute orbital parameters of parent bodies
@@ -183,6 +187,8 @@ class DebrisDisk:
         # Compute orbital parameters of launched dust grains
         # beta = Prad/Pgrav
         # Nlaunch = launch points per parent body orbit
+        if "Nlaunch" not in self.inputdata or "Nparticales" not in self.inputdata or self.inputdata["Nlaunch"] <= 0 or self.inputdata["Nparticles"] <= 0:
+                return
         print("Computing Dust Grain Orbits...")
         if manual:
             self.beta = beta #FIX
@@ -311,7 +317,7 @@ class DebrisDisk:
         # Nlaunchback = launch points per parent body orbit
         # if len(self.inputdata) <= 30:
         #     return
-        if "Nlaunchback" not in self.inputdata or "Nback" not in self.inputdata:
+        if "Nlaunchback" not in self.inputdata or "Nback" not in self.inputdata or self.inputdata["Nlaunchback"] <= 0 or self.inputdata["Nback"] <= 0:
             return
         print("Computing Background Dust Grain Orbits...")
         if manual:
@@ -332,6 +338,9 @@ class DebrisDisk:
             betamin, betamax = self.inputdata["betamin"], self.inputdata["betamax"]
             self.beta_dust = np.zeros((len(self.h), Nlaunchback))
 
+        self.beta_bounded = False
+        if "beta_bounded" in self.inputdata and self.inputdata["beta_bounded"] == 1:
+            self.beta_bounded = True
         self.a_dust = np.zeros((len(self.h), Nlaunchback))  # len(self.h) is Nback - this is Nback x Nlaunchback array
         self.e_dust = np.zeros((len(self.h), Nlaunchback))
         self.I_dust = np.zeros((len(self.h), Nlaunchback))
@@ -342,27 +351,10 @@ class DebrisDisk:
 
         for i in range(len(self.h)):  # for each parent body
             print("%i/%i background parent body" % (i + 1, len(self.h)))
-            # if self.inputdata["launchstyle"] == 1:
-            # uniform in f
             fp = nr.uniform(0, 2 * np.pi, Nlaunchback)  # get true anomaly for each
             lps[i] = fp
             cosfp = np.cos(fp)
             sinfp = np.sin(fp)
-            # elif self.inputdata["launchstyle"] == 2:
-            #     # uniform in cosf
-            #     cosfp = nr.uniform(-1, 1, Nlaunchback)
-            #     sinfp = nr.uniform(-1, 1, Nlaunchback)
-            # elif self.inputdata["launchstyle"] == 3:
-            #     # uniform in M
-            #     f, fweight = ppo.OutputPosition(self.e[i], Npts=Nlaunchback) # haven't seen use of this case?
-            #     lps[i] = f
-            #     cosfp = np.cos(f)
-            #     sinfp = np.sin(f)
-            # elif self.inputdata["launchstyle"] == 4:
-            #     # all at peri
-            #     cosfp = np.ones(Nlaunchback)
-            #     sinfp = np.zeros(Nlaunchback)
-
             if self.inputdata["betadistrb"] != 0:
                 truemax = 0
                 for j in range(len(cosfp)):  # for each dust grain
@@ -426,12 +418,16 @@ class DebrisDisk:
 
     ##Output ASCII file
     def OutputParentOrbit(self, outfile):
+        if "Nlaunch" not in self.inputdata or "Nparticles" not in self.inputdata or self.inputdata["Nlaunch"] <= 0 or self.inputdata["Nparticles"] <= 0:
+            return
         np.savetxt(outfile + "_pqhk.txt", list(zip(self.p, self.q, self.h, self.k, self.p0, \
                                                    self.q0, self.h0, self.k0, self.a)))
         np.savetxt(outfile + "_orbit.txt", list(zip(self.a, self.e, self.I, self.Omega, self.omega)))
         np.savetxt(outfile + "_freq.txt", list(zip(self.A, self.Aj, self.B, self.Bj)))
 
     def OutputDustOrbit(self, outfile):
+        if "Nlaunch" not in self.inputdata or "Nparticles" not in self.inputdata or self.inputdata["Nlaunch"] <= 0 or self.inputdata["Nparticles"] <= 0:
+            return
         if self.inputdata["betadistrb"] == 0:
             np.savetxt(outfile + "_dustorbit.txt", list(zip(self.a_dust, self.e_dust, \
                                                             self.I_dust, self.Omega_dust, \
@@ -442,6 +438,8 @@ class DebrisDisk:
                                                             self.omega_dust, self.beta_dust)))
 
     def OutputDustAndBackOrbit(self, outfile):
+        if "Nlaunchback" not in self.inputdata or "Nback" not in self.inputdata or self.inputdata["Nlaunchback"] <= 0 or self.inputdata["Nback"] <= 0:
+            return
         if self.inputdata["betadistrb"] == 0:
             np.savetxt(outfile + "_dustorbit.txt", list(zip(self.a_all, self.e_all, \
                                                             self.I_all, self.Omega_all, \
@@ -514,7 +512,7 @@ class DebrisDisk:
         # amin, amax: min, max semi-major axes of parent bodies
         # I0, e0: initial mutual inclination and eccentricities
         # Omega0, omega0: initial nodal angle and argument of periapse
-        if "Nlaunchback" not in self.inputdata or "Nback" not in self.inputdata:
+        if "Nlaunchback" not in self.inputdata or "Nback" not in self.inputdata or self.inputdata["Nlaunchback"] <= 0 or self.inputdata["Nback"] <= 0:
             return
 
         print("Computing Background Parent Orbits (single planet)...")
@@ -598,14 +596,15 @@ class DebrisDisk:
             #     np.max((0, self.inputdata["Icent"] * np.pi / 180. - self.inputdata["I0"] * np.pi / 180.)), \
             #     self.inputdata["I0"] * np.pi / 180. + self.inputdata["Icent"] * np.pi / 180.,
             #     int(self.inputdata["Nback"]))
-            Ifree = nr.uniform(0, 0.2, int(self.inputdata["Nback"]))
+            Ifree = nr.uniform(-0.2, 0.2, int(self.inputdata["Nback"]))
             omega = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nback"]))
             Omega = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nback"]))
             self.h = efree * np.sin(omega + Omega) + self.h0
             self.k = efree * np.cos(omega + Omega) + self.k0
             self.p = Ifree * np.sin(Omega) + self.p0
             self.q = Ifree * np.cos(Omega) + self.q0
-
+        self.ComputeBackgroundParentOrbital()
+        self.ComputeBackgroundDustGrains()
 
     def ComputeBackgroundParentOrbital(self):
         # Compute orbital parameters of parent bodies

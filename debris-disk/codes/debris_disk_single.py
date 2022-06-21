@@ -79,7 +79,7 @@ class DebrisDisk:
         # amin, amax: min, max semi-major axes of parent bodies
         # I0, e0: initial mutual inclination and eccentricities
         # Omega0, omega0: initial nodal angle and argument of periapse
-        if "Nlaunch" not in self.inputdata or "Nparticales" not in self.inputdata or self.inputdata["Nlaunch"] <= 0 or self.inputdata["Nparticles"] <= 0:
+        if "Nlaunch" not in self.inputdata or "Nparticles" not in self.inputdata or self.inputdata["Nlaunch"] <= 0 or self.inputdata["Nparticles"] <= 0:
             return
         print("Computing Parent Orbits (single planet)...")
         if self.freeelem:
@@ -187,7 +187,7 @@ class DebrisDisk:
         # Compute orbital parameters of launched dust grains
         # beta = Prad/Pgrav
         # Nlaunch = launch points per parent body orbit
-        if "Nlaunch" not in self.inputdata or "Nparticales" not in self.inputdata or self.inputdata["Nlaunch"] <= 0 or self.inputdata["Nparticles"] <= 0:
+        if "Nlaunch" not in self.inputdata or "Nparticles" not in self.inputdata or self.inputdata["Nlaunch"] <= 0 or self.inputdata["Nparticles"] <= 0:
                 return
         print("Computing Dust Grain Orbits...")
         if manual:
@@ -262,27 +262,14 @@ class DebrisDisk:
                         self.beta_dust[i, j] = bd.OrbTimeCorrCirc(betapow=betapow, betamin=betamin, Ndust=1,
                                                                   beta_bounded=self.beta_bounded, a=self.a[i],
                                                                   Mstar=self.Mstar, Tage=self.age)
-
-
-            # TESTING: set all beta to zero
-            # for j in range(len(cosfp)):
-            #     self.beta_dust[i, j] = 0
-
-
             self.a_dust[i, :] = (1 - self.beta_dust[i, :]) * self.a[i] * (1 - self.e[i] ** 2) / \
                                 (1 - self.e[i] ** 2 - 2 * self.beta_dust[i, :] * (1 + self.e[i] * cosfp))
             self.e_dust[i, :] = np.sqrt(
                 self.e[i] ** 2 + 2 * self.beta_dust[i, :] * self.e[i] * cosfp + self.beta_dust[i, :] ** 2) / (
                                             1 - self.beta_dust[i, :])
             self.omega_dust[i,:] = self.omega[i]+np.arctan2(self.beta_dust[i,:]*sinfp, self.e[i]+self.beta_dust[i,:]*cosfp)
-            #self.omega_dust[i, :] = self.omega[i]
-
             self.I_dust[i, :] = self.I[i]
             self.Omega_dust[i, :] = self.Omega[i]
-            # print(self.a_dust[i, :], self.beta_dust[i, :])
-            # print(self.omega_dust[i, :])
-            # print(self.a_dust[i, :] * ( 1 - self.e_dust[i, :])) # check - all have same peri (they do)
-
             uboundi = np.where(self.a_dust[i, :] < 0)[0] # what does this mean?
             if len(uboundi) > 0 and self.inputdata["betadistrb"] != 0:
                 pdb.set_trace()
@@ -315,8 +302,6 @@ class DebrisDisk:
         # Compute orbital parameters of launched dust grains
         # beta = Prad/Pgrav
         # Nlaunchback = launch points per parent body orbit
-        # if len(self.inputdata) <= 30:
-        #     return
         if "Nlaunchback" not in self.inputdata or "Nback" not in self.inputdata or self.inputdata["Nlaunchback"] <= 0 or self.inputdata["Nback"] <= 0:
             return
         print("Computing Background Dust Grain Orbits...")
@@ -427,7 +412,9 @@ class DebrisDisk:
 
     def OutputDustOrbit(self, outfile):
         if "Nlaunch" not in self.inputdata or "Nparticles" not in self.inputdata or self.inputdata["Nlaunch"] <= 0 or self.inputdata["Nparticles"] <= 0:
+            print(":(")
             return
+        print("woahh------------------------------------")
         if self.inputdata["betadistrb"] == 0:
             np.savetxt(outfile + "_dustorbit.txt", list(zip(self.a_dust, self.e_dust, \
                                                             self.I_dust, self.Omega_dust, \

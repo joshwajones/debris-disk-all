@@ -1,6 +1,5 @@
 """
 Generate debris disk
-
 @author: Eve J. Lee
 Feb. 16th 2016
 """
@@ -17,13 +16,13 @@ dd = debris_disk_single.DebrisDisk("../disk_input/%s.txt"%response)
 dd.AddSinglePlanet()
 #dd.ComputeParentSingle(manual=True, amin=62.6, amax=75.9, I0=0, e0=0.)
 dd.ComputeParentSingle(Nparticles=1)
-#dd.ComputeParentOrbital()
-#dd.ComputeDustGrains()
+dd.ComputeParentOrbital()
+dd.ComputeDustGrains()
 dd.OutputParentOrbit("../parentorbit/%s"%response)
 
 dd.ComputeBackgroundParentSingle()
-#dd.ComputeBackgroundParentOrbital()
-#dd.ComputeBackgroundDustGrains()
+dd.ComputeBackgroundParentOrbital()
+dd.ComputeBackgroundDustGrains()
 
 #dd.Plot_pqhk()
 #dd.Plot3DOrbit()

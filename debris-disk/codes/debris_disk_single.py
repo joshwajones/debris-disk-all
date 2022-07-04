@@ -263,25 +263,46 @@ class DebrisDisk:
             if "ejected" in self.inputdata and self.inputdata["ejected"] == 1:
                 dv_ratio = self.inputdata["dv_ratio"]
                 # get r from a, e, fp
-                # change i and j in cosfp?? 
-                radius = self.a[i] * (1 - self.e[i] ** 2) / (1 + self.e[i] * cosfp[i])
-                velocity = np.sqrt(consts.G * self.Mstar * (2 / radius - 1 / self.a[i]))
+                # change i and j in cosfp??
+
                 P1 = self.get_p1_matrix(w=self.omega[i])
                 P2 = self.get_p2_matrix(I=self.I[i])
                 P3 = self.get_p3_matrix(om=self.Omega[i])
                 M = P3 @ P2 @ P1
-                coords_orbplane = [radius * cosfp[i], radius * sinfp[i], 0]
-                coords_eq = M @ coords_orbplane
-                drdt = self.a[i] * (1 - self.e[i] ** 2) * self.e[i] * sinfp[i] / ((1 + self.e[i] * cosfp[i]) ** 2)
-                dydx = (radius * cosfp[i] - drdt * sinfp[i]) / (- 1 * radius * sinfp[i] + drdt * cosfp[i])
-                velocity_orbplane = [1, dydx]
-                velocity_orbplane /= np.linalg.norm(velocity_orbplane)
-                velocity_orbplane *= velocity
-                velocity_eq = M @ velocity_orbplane
+
+
                 for j in len(self.a_dust[i]): #for each dust particle launched from this parent body
-                    a, e, i, O, w, f = self.get_orbital_elements_rand_dv(coords_eq, velocity_eq, 0.05, mu, 1e-40)
-                    self.a_dust[i][j] = (1 - self.beta_dust[i][j]) * a * (1 - e**2) / (1 - e ** 2 - 2 * self.beta_dust[i][j] * (1 + e * cosfp[]))
-                    return
+                    radius = self.a[i] * (1 - self.e[i] ** 2) / (1 + self.e[i] * cosfp[i])
+                    velocity = np.sqrt(consts.G * self.Mstar * (2 / radius - 1 / self.a[i]))
+                    drdt = self.a[i] * (1 - self.e[i] ** 2) * self.e[i] * sinfp[j] / ((1 + self.e[i] * cosfp[j]) ** 2)
+                    dydx = (radius * cosfp[j] - drdt * sinfp[j]) / (- 1 * radius * sinfp[j] + drdt * cosfp[j])
+                    velocity_orbplane = [1, dydx]
+                    velocity_orbplane /= np.linalg.norm(velocity_orbplane)
+                    velocity_orbplane *= velocity
+                    velocity_eq = M @ velocity_orbplane
+
+                    coords_orbplane = [radius * cosfp[j], radius * sinfp[j], 0]
+                    coords_eq = M @ coords_orbplane
+
+                    a, e, I, O, w, f = self.get_orbital_elements_rand_dv(coords_eq, velocity_eq, 0.05, mu, 1e-40)
+                    cosf = np.cos(f)
+                    sinf = np.sin(f)
+                    self.a_dust[i][j] = (1 - self.beta_dust[i][j]) * a * (1 - e ** 2) / (
+                                1 - e ** 2 - 2 * self.beta_dust[i][j] * (1 + e * cosf))
+                    self.e_dust[i][j] = np.sqrt(
+                        e ** 2 + 2 * self.beta_dust[i][j] * e * cosf + self.beta_dust[i][j] ** 2) / (
+                                                    1 - self.beta_dust[i][j])
+                    self.omega_dust[i][j] = w + np.arctan2(self.beta_dust[i][j] * sinf,
+                                                           e + self.beta_dust[i][j] * cosf)
+
+                    self.I_dust[i][j] = I
+                    self.Omega_dust[i][j] = O
+                    # self.a_dust[i][j] = (1 - self.beta_dust[i][j]) * a * (1 - e**2) / (1 - e ** 2 - 2 * self.beta_dust[i][j] * (1 + e * cosfp[j]))
+                    # self.e_dust[i][j] = np.sqrt(e ** 2 + 2 * self.beta_dust[i][j] * e * cosfp[j] + self.beta_dust[i][j] ** 2) / ( 1- self.beta_dust[i][j])
+                    # self.omega_dust[i][j] = w + np.arctan2(self.beta_dust[i][j] * sinfp[j], e + self.beta_dust[i][j] * cosfp[j])
+                    #
+                    # self.I_dust[i][j] = I
+                    # self.Omega_dust[i][j] = O
             else:
                 self.a_dust[i, :] = (1 - self.beta_dust[i, :]) * self.a[i] * (1 - self.e[i] ** 2) / \
                                     (1 - self.e[i] ** 2 - 2 * self.beta_dust[i, :] * (1 + self.e[i] * cosfp))

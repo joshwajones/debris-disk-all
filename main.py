@@ -1,21 +1,16 @@
+# This is a sample Python script.
 
-import matplotlib.pyplot as plt
-import numpy as np
+# Press ⌃R to execute it or replace it with your code.
+# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
 
-im1 = np.loadtxt("./debris-disk/images/imgrid/200x200/A0_n0_moth_0I_Alt0000_Az0000_azfirst.txt")
-im2 = np.loadtxt("./debris-disk/images/imgrid/200x200/A0_n0_moth_0I_Alt0000_Az0000.txt")
 
-# plt.figure()
-# plt.imshow(im1)
-# plt.show()
-# #plt.figure()
-# plt.imshow(im2)
-# plt.show()
-# arr=np.array([[1,0]*4,[0,1]*4]*4)
-# #print(arr)
-# # use the imshow function to display the image made from the above array
-# plt.imshow(arr)
-# plt.show()
+def print_hi(name):
+    # Use a breakpoint in the code line below to debug your script.
+    print(f'Hi, {name}')  # Press ⌘F8 to toggle the breakpoint.
 
-# plt.figure()
-# plt.show()
+
+# Press the green button in the gutter to run the script.
+if __name__ == '__main__':
+    print_hi('PyCharm')
+
+# See PyCharm help at https://www.jetbrains.com/help/pycharm/

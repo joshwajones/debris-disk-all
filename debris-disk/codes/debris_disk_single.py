@@ -212,6 +212,7 @@ class DebrisDisk:
         self.omega_dust = np.zeros((len(self.h), Nlaunch))
 
         lps = np.zeros((len(self.h), Nlaunch))
+        mu = consts.G * self.Mstar
 
         for i in range(len(self.h)):  # for each parent body
             print("%i/%i parent body" % (i + 1, len(self.h)))
@@ -259,27 +260,40 @@ class DebrisDisk:
                                                                   beta_bounded=self.beta_bounded, a=self.a[i],
                                                                   Mstar=self.Mstar, Tage=self.age)
 
+            if "ejected" in self.inputdata and self.inputdata["ejected"] == 1:
+                dv_ratio = self.inputdata["dv_ratio"]
+                # get r from a, e, fp
+                # change i and j in cosfp?? 
+                radius = self.a[i] * (1 - self.e[i] ** 2) / (1 + self.e[i] * cosfp[i])
+                velocity = np.sqrt(consts.G * self.Mstar * (2 / radius - 1 / self.a[i]))
+                P1 = self.get_p1_matrix(w=self.omega[i])
+                P2 = self.get_p2_matrix(I=self.I[i])
+                P3 = self.get_p3_matrix(om=self.Omega[i])
+                M = P3 @ P2 @ P1
+                coords_orbplane = [radius * cosfp[i], radius * sinfp[i], 0]
+                coords_eq = M @ coords_orbplane
+                drdt = self.a[i] * (1 - self.e[i] ** 2) * self.e[i] * sinfp[i] / ((1 + self.e[i] * cosfp[i]) ** 2)
+                dydx = (radius * cosfp[i] - drdt * sinfp[i]) / (- 1 * radius * sinfp[i] + drdt * cosfp[i])
+                velocity_orbplane = [1, dydx]
+                velocity_orbplane /= np.linalg.norm(velocity_orbplane)
+                velocity_orbplane *= velocity
+                velocity_eq = M @ velocity_orbplane
+                for j in len(self.a_dust[i]): #for each dust particle launched from this parent body
+                    a, e, i, O, w, f = self.get_orbital_elements_rand_dv(coords_eq, velocity_eq, 0.05, mu, 1e-40)
+                    self.a_dust[i][j] = (1 - self.beta_dust[i][j]) * a * (1 - e**2) / (1 - e ** 2 - 2 * self.beta_dust[i][j] * (1 + e * cosfp[]))
+                    return
+            else:
+                self.a_dust[i, :] = (1 - self.beta_dust[i, :]) * self.a[i] * (1 - self.e[i] ** 2) / \
+                                    (1 - self.e[i] ** 2 - 2 * self.beta_dust[i, :] * (1 + self.e[i] * cosfp))
+                self.e_dust[i, :] = np.sqrt(
+                    self.e[i] ** 2 + 2 * self.beta_dust[i, :] * self.e[i] * cosfp + self.beta_dust[i, :] ** 2) / (
+                                                1 - self.beta_dust[i, :])
+                self.omega_dust[i,:] = self.omega[i]+np.arctan2(self.beta_dust[i,:]*sinfp, self.e[i]+self.beta_dust[i,:]*cosfp)
 
-            # TESTING: set all beta to zero
-            # for j in range(len(cosfp)):
-            #     self.beta_dust[i, j] = 0
+                self.I_dust[i, :] = self.I[i]
+                self.Omega_dust[i, :] = self.Omega[i]
 
-
-            self.a_dust[i, :] = (1 - self.beta_dust[i, :]) * self.a[i] * (1 - self.e[i] ** 2) / \
-                                (1 - self.e[i] ** 2 - 2 * self.beta_dust[i, :] * (1 + self.e[i] * cosfp))
-            self.e_dust[i, :] = np.sqrt(
-                self.e[i] ** 2 + 2 * self.beta_dust[i, :] * self.e[i] * cosfp + self.beta_dust[i, :] ** 2) / (
-                                            1 - self.beta_dust[i, :])
-            self.omega_dust[i,:] = self.omega[i]+np.arctan2(self.beta_dust[i,:]*sinfp, self.e[i]+self.beta_dust[i,:]*cosfp)
-            #self.omega_dust[i, :] = self.omega[i]
-
-            self.I_dust[i, :] = self.I[i]
-            self.Omega_dust[i, :] = self.Omega[i]
-            # print(self.a_dust[i, :], self.beta_dust[i, :])
-            # print(self.omega_dust[i, :])
-            # print(self.a_dust[i, :] * ( 1 - self.e_dust[i, :])) # check - all have same peri (they do)
-
-            uboundi = np.where(self.a_dust[i, :] < 0)[0] # what does this mean?
+            uboundi = np.where(self.a_dust[i, :] < 0)[0] 
             if len(uboundi) > 0 and self.inputdata["betadistrb"] != 0:
                 pdb.set_trace()
 
@@ -344,27 +358,10 @@ class DebrisDisk:
 
         for i in range(len(self.h)):  # for each parent body
             print("%i/%i background parent body" % (i + 1, len(self.h)))
-            # if self.inputdata["launchstyle"] == 1:
-            # uniform in f
             fp = nr.uniform(0, 2 * np.pi, Nlaunchback)  # get true anomaly for each
             lps[i] = fp
             cosfp = np.cos(fp)
             sinfp = np.sin(fp)
-            # elif self.inputdata["launchstyle"] == 2:
-            #     # uniform in cosf
-            #     cosfp = nr.uniform(-1, 1, Nlaunchback)
-            #     sinfp = nr.uniform(-1, 1, Nlaunchback)
-            # elif self.inputdata["launchstyle"] == 3:
-            #     # uniform in M
-            #     f, fweight = ppo.OutputPosition(self.e[i], Npts=Nlaunchback) # haven't seen use of this case?
-            #     lps[i] = f
-            #     cosfp = np.cos(f)
-            #     sinfp = np.sin(f)
-            # elif self.inputdata["launchstyle"] == 4:
-            #     # all at peri
-            #     cosfp = np.ones(Nlaunchback)
-            #     sinfp = np.zeros(Nlaunchback)
-
             if self.inputdata["betadistrb"] != 0:
                 truemax = 0
                 for j in range(len(cosfp)):  # for each dust grain
@@ -415,6 +412,7 @@ class DebrisDisk:
             self.omega_dust = self.omega_dust[goodi]
             self.beta_dust = self.beta_dust[goodi]
         self.SaveValues()
+
     # Save parameters. Useful for persistence between primary and background disk
     def SaveValues(self):
         self.a_all.extend(self.a_dust)
@@ -616,3 +614,119 @@ class DebrisDisk:
         self.omega = pomega - self.Omega
         self.I = np.sqrt(self.p ** 2 + self.q ** 2)
         self.e = np.sqrt(self.h ** 2 + self.k ** 2)
+
+
+    # def GetRandomDirection(self, ratio):
+    #     dv_x = np.random.normal()
+    #     dv_y = np.random.normal()
+    #     dv_z = np.random.normal()
+    #     norm = math.pow(dv_x ** 2 + dv_y ** 2 + dv_z ** 2, 0.5)
+    #     return np.array([dv_x, dv_y, dv_y]) / norm
+
+    # returns the orbital elements (a, e, i, O, w, f) of an orbit
+    # calculated based on  r0, v0 (= v + dv), mu (= GM)
+    # eps controls for numerical precision
+    def get_orbital_elements(self, r0, v, dv, mu, eps):
+        def get_norm(vector):
+            return np.linalg.norm(vector)
+
+        i_dir = np.array([1, 0, 0])
+        j_dir = np.array([0, 1, 0])
+        k_dir = np.array([0, 0, 1])
+        v0 = v + dv
+        speed = get_norm(v0)
+        radius = get_norm(r0)
+
+        h_vec = np.cross(r0, v0)
+        h = get_norm(h_vec)
+        h_z = h_vec @ k_dir
+        node_vec = np.cross(k_dir, h_vec)
+        n = get_norm(node_vec)
+        n_x = node_vec @ i_dir
+
+        scaled_r_vec = (speed ** 2 - mu / radius) * r0
+        scaled_v_vec = (r0 @ v0) * v0
+        e_vec = (scaled_r_vec - scaled_v_vec) / mu
+        ecc = get_norm(e_vec)
+        Energy = (speed ** 2) / 2 - mu / radius
+
+        if abs(ecc - 1) < eps:
+            a = float('inf')
+            peri = h ** 2 / mu
+        else:
+            a = - mu / (2 * Energy)
+            peri = a * (1 - ecc ** 2)
+
+        I = np.arccos(h_z / h)
+
+        if abs(ecc) < eps:  # circular
+            if abs(I) < eps or abs(I - np.pi) < eps:  # equatorial
+                f = np.arccos(r0[0] / radius)
+                if v0[0] > 0:
+                    f = 2 * np.pi - f
+                w = 0  # "periapsis" at launch
+                Omega = 0
+            else:
+                f = np.arccos((node_vec @ r0) / (n * radius))
+                if r0[2] < 0:
+                    f = 2 * np.pi - f
+                w = f
+                Omega = np.arccos(n_x / n)
+        else:
+            if abs(I) < eps or abs(I - np.pi) < eps:
+                Omega = 0  # convention
+                w = np.arctan2(e_vec[1], e_vec[0])
+                if np.cross(r0, v0)[2] < 0:
+                    w = 2 * np.pi - w
+            else:
+                Omega = np.arccos(n_x / n)
+                w = np.arccos((node_vec @ e_vec) / (n * ecc))
+            f = np.arccos((e_vec @ r0) / (ecc * radius))
+
+            if node_vec[1] < 0:
+                Omega = 2 * np.pi - Omega
+
+            if r0 @ v0 < 0:
+                f = 360 - f
+            return (a, ecc, I, Omega, w, f)
+
+    # Returns orbital elements of an orbit with random dv of a certain RATIO
+    def get_orbital_elements_rand_dv(self, r0, v, ratio, mu, eps):
+        i_dir = np.array([1, 0, 0])
+        j_dir = np.array([0, 1, 0])
+        k_dir = np.array([0, 0, 1])
+        dv_mag = ratio * np.linalg.norm(v)
+        dv_x = np.random.normal()
+        dv_y = np.random.normal()
+        dv_z = np.random.normal()
+
+        norm = math.pow(dv_x ** 2 + dv_y ** 2 + dv_z ** 2, 0.5)
+        dv = dv_mag * (dv_x * i_dir + dv_y * j_dir + dv_z * k_dir) / norm
+        return get_orbital_elements(r0, v, dv, mu, eps)
+
+    def get_p1_matrix(self, w):
+        P1 = np.zeros((3, 3))
+        P1[0][0] = np.cos(w)
+        P1[0][1] = -1 * np.sin(w)
+        P1[1][0] = np.sin(w)
+        P1[1][1] = np.cos(w)
+        P1[2][2] = 1
+        return P1
+
+    def get_p2_matrix(self, I):
+        P2 = np.zeros((3, 3))
+        P2[0][0] = 1
+        P2[1][1] = np.cos(I)
+        P2[1][2] = -1 * np.sin(I)
+        P2[2][1] = np.sin(I)
+        P2[2][2] = np.cos(I)
+        return P2
+
+    def get_p3_matrix(self, om):
+        P3 = np.zeros((3, 3))
+        P3[0][0] = np.cos(om)
+        P3[0][1] = -1 * np.sin(om)
+        P3[1][0] = np.sin(om)
+        P3[1][1] = np.cos(om)
+        P3[2][2] = 1
+        return P3

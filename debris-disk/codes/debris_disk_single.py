@@ -15,6 +15,7 @@ import read_disk_input
 import prob_position_orbit as ppo
 import consts
 import pdb
+import math
 
 
 class DebrisDisk:
@@ -244,7 +245,7 @@ class DebrisDisk:
                 # all from quadrature
                 cosfp = np.zeros(Nlaunch)
                 sinfp = np.ones(Nlaunch)
-
+            #print("MADE IT :::::1")
             if self.inputdata["betadistrb"] != 0:
                 for j in range(len(cosfp)):  # for each dust grain
                     if self.inputdata["sizedistrb"] == 1:
@@ -259,8 +260,9 @@ class DebrisDisk:
                         self.beta_dust[i, j] = bd.OrbTimeCorrCirc(betapow=betapow, betamin=betamin, Ndust=1,
                                                                   beta_bounded=self.beta_bounded, a=self.a[i],
                                                                   Mstar=self.Mstar, Tage=self.age)
-
+           # print("MADE IT:::::::: 2")
             if "ejected" in self.inputdata and self.inputdata["ejected"] == 1:
+                #print('YOOOOOOOOOOOOOOOOOOO')
                 dv_ratio = self.inputdata["dv_ratio"]
                 # get r from a, e, fp
                 # change i and j in cosfp??
@@ -269,24 +271,35 @@ class DebrisDisk:
                 P2 = self.get_p2_matrix(I=self.I[i])
                 P3 = self.get_p3_matrix(om=self.Omega[i])
                 M = P3 @ P2 @ P1
-
-
-                for j in len(self.a_dust[i]): #for each dust particle launched from this parent body
-                    radius = self.a[i] * (1 - self.e[i] ** 2) / (1 + self.e[i] * cosfp[i])
+                # print("MADE IT::::::::2.1")
+                # radius = self.a[i] * (1 - self.e[i] ** 2) / ( 1 + self.e[i] * cosfp)
+                # velocity = np.sqrt(consts.G * self.Mstar * (2 / radius - 1 / self.a[i]))
+                # drdt = self.a[i] * (1 - self.e[i] ** 2) * self.e[i] * sinfp / ((1 + self.e[i] * cosfp) ** 2)
+                for j in range(len(self.a_dust[i])): #for each dust particle launched from this parent body
+                    radius = self.a[i] * (1 - self.e[i] ** 2) / (1 + self.e[i] * cosfp[j])
                     velocity = np.sqrt(consts.G * self.Mstar * (2 / radius - 1 / self.a[i]))
                     drdt = self.a[i] * (1 - self.e[i] ** 2) * self.e[i] * sinfp[j] / ((1 + self.e[i] * cosfp[j]) ** 2)
-                    dydx = (radius * cosfp[j] - drdt * sinfp[j]) / (- 1 * radius * sinfp[j] + drdt * cosfp[j])
-                    velocity_orbplane = [1, dydx]
-                    velocity_orbplane /= np.linalg.norm(velocity_orbplane)
-                    velocity_orbplane *= velocity
+                    # print("MADE IT::::::::2.2,  ", j)
+                    if abs(-1 * radius * sinfp[j] + drdt * cosfp[j]) < 1e-40:
+                        #print("drdt:      ", drdt, "     sinfp:   ", sinfp[j], "    ", i, "  ", j)
+                        if cosfp[j] > 0:
+                            velocity_orbplane = [0, velocity, 0]
+                        else:
+                            velocity_orbplane = [0, -velocity, 0]
+                    else:
+                        dydx = (radius * cosfp[j] - drdt * sinfp[j]) / (-1 * radius * sinfp[j] + drdt * cosfp[j])
+                        velocity_orbplane = [1, dydx, 0]
+                        velocity_orbplane = velocity/np.linalg.norm(velocity_orbplane) * velocity_orbplane
                     velocity_eq = M @ velocity_orbplane
+                    # print("MADE IT::::::::2.3,  ", j)
 
                     coords_orbplane = [radius * cosfp[j], radius * sinfp[j], 0]
                     coords_eq = M @ coords_orbplane
 
-                    a, e, I, O, w, f = self.get_orbital_elements_rand_dv(coords_eq, velocity_eq, 0.05, mu, 1e-40)
+                    a, e, I, O, w, f = self.get_orbital_elements_rand_dv(coords_eq, velocity_eq, dv_ratio, mu, 1e-40)
                     cosf = np.cos(f)
                     sinf = np.sin(f)
+                    #print("MADE IT::::::::2.4,  ", j)
                     self.a_dust[i][j] = (1 - self.beta_dust[i][j]) * a * (1 - e ** 2) / (
                                 1 - e ** 2 - 2 * self.beta_dust[i][j] * (1 + e * cosf))
                     self.e_dust[i][j] = np.sqrt(
@@ -294,9 +307,11 @@ class DebrisDisk:
                                                     1 - self.beta_dust[i][j])
                     self.omega_dust[i][j] = w + np.arctan2(self.beta_dust[i][j] * sinf,
                                                            e + self.beta_dust[i][j] * cosf)
-
+                    #print("MADE IT::::::::2.5,  ", j)
                     self.I_dust[i][j] = I
                     self.Omega_dust[i][j] = O
+                    cosfp[i] = cosf
+                    sinfp[i] = sinf
                     # self.a_dust[i][j] = (1 - self.beta_dust[i][j]) * a * (1 - e**2) / (1 - e ** 2 - 2 * self.beta_dust[i][j] * (1 + e * cosfp[j]))
                     # self.e_dust[i][j] = np.sqrt(e ** 2 + 2 * self.beta_dust[i][j] * e * cosfp[j] + self.beta_dust[i][j] ** 2) / ( 1- self.beta_dust[i][j])
                     # self.omega_dust[i][j] = w + np.arctan2(self.beta_dust[i][j] * sinfp[j], e + self.beta_dust[i][j] * cosfp[j])
@@ -313,10 +328,11 @@ class DebrisDisk:
 
                 self.I_dust[i, :] = self.I[i]
                 self.Omega_dust[i, :] = self.Omega[i]
-
+            # print("MADE IT::::::::3")
             uboundi = np.where(self.a_dust[i, :] < 0)[0] 
-            if len(uboundi) > 0 and self.inputdata["betadistrb"] != 0:
-                pdb.set_trace()
+            # if len(uboundi) > 0 and self.inputdata["betadistrb"] != 0:
+            #     pdb.set_trace()
+            # print("MADE IT::::::::4")
 
         lps = lps.flatten()
         np.savetxt('launchpoints.txt', lps)
@@ -723,7 +739,7 @@ class DebrisDisk:
 
         norm = math.pow(dv_x ** 2 + dv_y ** 2 + dv_z ** 2, 0.5)
         dv = dv_mag * (dv_x * i_dir + dv_y * j_dir + dv_z * k_dir) / norm
-        return get_orbital_elements(r0, v, dv, mu, eps)
+        return self.get_orbital_elements(r0, v, dv, mu, eps)
 
     def get_p1_matrix(self, w):
         P1 = np.zeros((3, 3))

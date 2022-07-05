@@ -19,7 +19,7 @@ az = float(sys.argv[5])
 ar = np.float(sys.argv[6])
 
 Image_alt, Image_az, col, opt = scatter_image.MakeImage("../dustorbit/%s_dustorbit.txt"%fstr, aspect_ratio=ar,
-                                                        resolution=0.1, obsincl=alt,maxa=maxa,d=d,obsazim=az,Ndust=100, depth=True)
+                                                        resolution=0.1, obsincl=alt,maxa=maxa,d=d,obsazim=az,Ndust=100, depth=True, fixbeta=0)
 np.savetxt("../images/imgrid/%ix%i/%s_Alt%04i_Az%04i.txt"%(maxa, maxa*ar,fstr,alt,az), Image_alt)
 np.savetxt("../images/imgrid/%ix%i/%s_Alt%04i_Az%04i_azfirst.txt"%(maxa, maxa*ar,fstr,alt,az), Image_az)
 np.savetxt("../images/imgrid/%ix%i/%s_Alt%04i_Az%04i_coldensity.txt"%(maxa, maxa*ar,fstr,alt,az), col)

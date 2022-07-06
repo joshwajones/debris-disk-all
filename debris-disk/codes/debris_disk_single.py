@@ -275,6 +275,18 @@ class DebrisDisk:
                 # radius = self.a[i] * (1 - self.e[i] ** 2) / ( 1 + self.e[i] * cosfp)
                 # velocity = np.sqrt(consts.G * self.Mstar * (2 / radius - 1 / self.a[i]))
                 # drdt = self.a[i] * (1 - self.e[i] ** 2) * self.e[i] * sinfp / ((1 + self.e[i] * cosfp) ** 2)
+                # def grSign(num):
+                #   if num > 0:
+                #       return 1
+                #   return -1
+                # temp_arr1 = np.where(cosfp > 0, velocity, -velocity)
+                # choose_array = np.array([np.zeros(len(cosfp)), temp_arr1, np.zeros(len(cosfp))]).T
+                # np.where(abs(-1 * radius * sinfp[j] + drdt * cosfp[j]) > 1e-40, np.zeros()
+                # dydx = np.where(abs(-1 * radius * sinfp + drdt * cosfp) > 1e-40, (radius * cosfp - drdt * sinfp) / (-1 * radius * sinfp + drdt * cosfp), np.zeros(len(cosfp)))
+                #
+                # num = radius * cosfp - drdt * sinfp
+                # div_zero = np.where(abs(-1 * radius * sinfp + drdt * cosfp) < 1e-40)
+                # denom =
                 for j in range(len(self.a_dust[i])): #for each dust particle launched from this parent body
                     radius = self.a[i] * (1 - self.e[i] ** 2) / (1 + self.e[i] * cosfp[j])
                     velocity = np.sqrt(consts.G * self.Mstar * (2 / radius - 1 / self.a[i]))
@@ -333,6 +345,7 @@ class DebrisDisk:
             # if len(uboundi) > 0 and self.inputdata["betadistrb"] != 0:
             #     pdb.set_trace()
             # print("MADE IT::::::::4")
+            print("terminado")
 
         lps = lps.flatten()
         np.savetxt('launchpoints.txt', lps)
@@ -724,7 +737,7 @@ class DebrisDisk:
                 Omega = 2 * np.pi - Omega
 
             if r0 @ v0 < 0:
-                f = 360 - f
+                f = 2 * np.pi - f
             return (a, ecc, I, Omega, w, f)
 
     # Returns orbital elements of an orbit with random dv of a certain RATIO

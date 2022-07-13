@@ -160,7 +160,7 @@ class DebrisDisk:
                 np.max((0, self.inputdata["Icent"] * np.pi / 180. - self.inputdata["I0"] * np.pi / 180.)), \
                 self.inputdata["I0"] * np.pi / 180. + self.inputdata["Icent"] * np.pi / 180.,
                 int(self.inputdata["Nparticles"]))
-            #Ifree = nr.uniform(-0.2, 0.2, int(self.inputdata["Nparticles"]))
+            #if #single
             # omega = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nparticles"]))
             # Omega = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nparticles"])) # SHOULD OMEGA BE CHANGED
             omega = np.zeros(int(self.inputdata["Nparticles"]))

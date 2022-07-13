@@ -3,6 +3,7 @@ Debris disk class
 @author: Eve J. Lee
 Feb. 15th 2016
 """
+#cleaning
 
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as pl

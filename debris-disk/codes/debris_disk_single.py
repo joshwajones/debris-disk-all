@@ -3,7 +3,6 @@ Debris disk class
 @author: Eve J. Lee
 Feb. 15th 2016
 """
-#cleaning
 
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as pl
@@ -38,6 +37,7 @@ class DebrisDisk:
         self.Omega_all = []
         self.omega_all = []
         self.beta_all = []
+        self.beta_bounded = False
 
     def AddSinglePlanet(self, manual=False, Mp=4., ap=5., ep=0.25, Ip=0., Omegap=0., omegap=0.):
         # Add a planet
@@ -160,12 +160,12 @@ class DebrisDisk:
                 np.max((0, self.inputdata["Icent"] * np.pi / 180. - self.inputdata["I0"] * np.pi / 180.)), \
                 self.inputdata["I0"] * np.pi / 180. + self.inputdata["Icent"] * np.pi / 180.,
                 int(self.inputdata["Nparticles"]))
-            #if #single
-            # omega = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nparticles"]))
-            # Omega = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nparticles"])) # SHOULD OMEGA BE CHANGED
-            omega = np.zeros(int(self.inputdata["Nparticles"]))
-            Omega = np.zeros(int(self.inputdata["Nparticles"]))
-
+            if self.inputdata["launchstyle"] >= 4: #if parent body orbits should be apsidally aligned
+                omega = np.zeros(int(self.inputdata["Nparticles"]))
+                Omega = np.zeros(int(self.inputdata["Nparticles"]))
+            else:
+                omega = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nparticles"]))
+                Omega = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nparticles"]))
             self.h = efree * np.sin(omega + Omega) + self.h0
             self.k = efree * np.cos(omega + Omega) + self.k0
             self.p = Ifree * np.sin(Omega) + self.p0
@@ -185,19 +185,12 @@ class DebrisDisk:
         # Nlaunch = launch points per parent body orbit
         print("Computing Dust Grain Orbits...")
         if manual:
-            self.beta = beta #FIX
-            #self.beta = 0
+            self.beta = beta
             Nlaunch = Nlaunch
         elif self.inputdata["betadistrb"] == 0:
             self.beta = self.inputdata["beta"]
             Nlaunch = int(self.inputdata["Nlaunch"])
-            self.beta_dust = np.ones((len(self.h), Nlaunch)) * self.beta #FIX
-            #self.beta_dust = np.zeros((len(self.h), Nlaunch))
-        elif "beta_bounded" in self.inputdata and self.inputdata["beta_bounded"] == 1:
-            Nlaunch = int(self.inputdata["Nlaunch"])
-            betapow = self.inputdata["betadistrb"]
-            betamin, betamax = self.inputdata["betamin"], self.inputdata["betamax"]
-            self.beta_dust = np.zeros((len(self.h), Nlaunch))
+            self.beta_dust = np.ones((len(self.h), Nlaunch)) * self.beta
         else:
             Nlaunch = int(self.inputdata["Nlaunch"])
             betapow = self.inputdata["betadistrb"]
@@ -207,7 +200,7 @@ class DebrisDisk:
         self.beta_bounded = False
         if "beta_bounded" in self.inputdata and self.inputdata["beta_bounded"] == 1:
             self.beta_bounded = True
-        self.a_dust = np.zeros((len(self.h), Nlaunch))  # len(self.h) is NParticles - this is Npart x Nlaunch array
+        self.a_dust = np.zeros((len(self.h), Nlaunch))  # len(self.h) is NParticles - this is Nparticles x Nlaunch array
         self.e_dust = np.zeros((len(self.h), Nlaunch))
         self.I_dust = np.zeros((len(self.h), Nlaunch))
         self.Omega_dust = np.zeros((len(self.h), Nlaunch))
@@ -220,12 +213,8 @@ class DebrisDisk:
             print("%i/%i parent body" % (i + 1, len(self.h)))
             if self.inputdata["launchstyle"] == 1:
                 # uniform in f
-                fp = nr.uniform(0, 2*np.pi, Nlaunch) # get true anomaly for each dust grain
-                #fp = nr.uniform(0, 2 * np.pi) * np.ones(Nlaunch) # EDIT: sets all true anomalies to same val
-                #print(fp)
-                #fp = np.pi * np.ones(Nlaunch) #TEST: sets all true anomalies to pi
-                # fp = np.zeros(Nlaunch)  # TEST: sets all true anomalies to zero
-                lps[i] = fp #? what is lps
+                fp = nr.uniform(0, 2*np.pi, Nlaunch)
+                lps[i] = fp
                 cosfp = np.cos(fp)
                 sinfp = np.sin(fp)
             elif self.inputdata["launchstyle"] == 2:
@@ -246,7 +235,6 @@ class DebrisDisk:
                 # all from quadrature
                 cosfp = np.zeros(Nlaunch)
                 sinfp = np.ones(Nlaunch)
-            #print("MADE IT :::::1")
             if self.inputdata["betadistrb"] != 0:
                 for j in range(len(cosfp)):  # for each dust grain
                     if self.inputdata["sizedistrb"] == 1:
@@ -261,13 +249,8 @@ class DebrisDisk:
                         self.beta_dust[i, j] = bd.OrbTimeCorrCirc(betapow=betapow, betamin=betamin, Ndust=1,
                                                                   beta_bounded=self.beta_bounded, a=self.a[i],
                                                                   Mstar=self.Mstar, Tage=self.age)
-           # print("MADE IT:::::::: 2")
-            if "ejected" in self.inputdata and self.inputdata["ejected"] == 1:
-                #print('YOOOOOOOOOOOOOOOOOOO')
+            if "ejected" in self.inputdata and self.inputdata["ejected"] == 1: #including ejecta velocity
                 dv_ratio = self.inputdata["dv_ratio"]
-                # get r from a, e, fp
-                # change i and j in cosfp??
-
                 P1 = self.get_p1_matrix(w=self.omega[i])
                 P2 = self.get_p2_matrix(I=self.I[i])
                 P3 = self.get_p3_matrix(om=self.Omega[i])
@@ -292,9 +275,7 @@ class DebrisDisk:
                     radius = self.a[i] * (1 - self.e[i] ** 2) / (1 + self.e[i] * cosfp[j])
                     velocity = np.sqrt(consts.G * self.Mstar * (2 / radius - 1 / self.a[i]))
                     drdt = self.a[i] * (1 - self.e[i] ** 2) * self.e[i] * sinfp[j] / ((1 + self.e[i] * cosfp[j]) ** 2)
-                    # print("MADE IT::::::::2.2,  ", j)
                     if abs(-1 * radius * sinfp[j] + drdt * cosfp[j]) < 1e-40:
-                        #print("drdt:      ", drdt, "     sinfp:   ", sinfp[j], "    ", i, "  ", j)
                         if cosfp[j] > 0:
                             velocity_orbplane = [0, velocity, 0]
                         else:
@@ -304,15 +285,12 @@ class DebrisDisk:
                         velocity_orbplane = [1, dydx, 0]
                         velocity_orbplane = velocity/np.linalg.norm(velocity_orbplane) * velocity_orbplane
                     velocity_eq = M @ velocity_orbplane
-                    # print("MADE IT::::::::2.3,  ", j)
-
                     coords_orbplane = [radius * cosfp[j], radius * sinfp[j], 0]
                     coords_eq = M @ coords_orbplane
 
                     a, e, I, O, w, f = self.get_orbital_elements_rand_dv(coords_eq, velocity_eq, dv_ratio, mu, 1e-40)
                     cosf = np.cos(f)
                     sinf = np.sin(f)
-                    #print("MADE IT::::::::2.4,  ", j)
                     self.a_dust[i][j] = (1 - self.beta_dust[i][j]) * a * (1 - e ** 2) / (
                                 1 - e ** 2 - 2 * self.beta_dust[i][j] * (1 + e * cosf))
                     self.e_dust[i][j] = np.sqrt(
@@ -320,17 +298,10 @@ class DebrisDisk:
                                                     1 - self.beta_dust[i][j])
                     self.omega_dust[i][j] = w + np.arctan2(self.beta_dust[i][j] * sinf,
                                                            e + self.beta_dust[i][j] * cosf)
-                    #print("MADE IT::::::::2.5,  ", j)
                     self.I_dust[i][j] = I
                     self.Omega_dust[i][j] = O
                     cosfp[i] = cosf
                     sinfp[i] = sinf
-                    # self.a_dust[i][j] = (1 - self.beta_dust[i][j]) * a * (1 - e**2) / (1 - e ** 2 - 2 * self.beta_dust[i][j] * (1 + e * cosfp[j]))
-                    # self.e_dust[i][j] = np.sqrt(e ** 2 + 2 * self.beta_dust[i][j] * e * cosfp[j] + self.beta_dust[i][j] ** 2) / ( 1- self.beta_dust[i][j])
-                    # self.omega_dust[i][j] = w + np.arctan2(self.beta_dust[i][j] * sinfp[j], e + self.beta_dust[i][j] * cosfp[j])
-                    #
-                    # self.I_dust[i][j] = I
-                    # self.Omega_dust[i][j] = O
             else:
                 self.a_dust[i, :] = (1 - self.beta_dust[i, :]) * self.a[i] * (1 - self.e[i] ** 2) / \
                                     (1 - self.e[i] ** 2 - 2 * self.beta_dust[i, :] * (1 + self.e[i] * cosfp))
@@ -341,12 +312,9 @@ class DebrisDisk:
 
                 self.I_dust[i, :] = self.I[i]
                 self.Omega_dust[i, :] = self.Omega[i]
-            # print("MADE IT::::::::3")
             uboundi = np.where(self.a_dust[i, :] < 0)[0] 
             # if len(uboundi) > 0 and self.inputdata["betadistrb"] != 0:
             #     pdb.set_trace()
-            # print("MADE IT::::::::4")
-            print("terminado")
 
         lps = lps.flatten()
         np.savetxt('launchpoints.txt', lps)
@@ -358,7 +326,6 @@ class DebrisDisk:
         self.omega_dust = self.omega_dust.flatten()
         self.beta_dust = self.beta_dust.flatten()
 
-        # Doesn't seem to do anything important
         uboundi = np.where(self.a_dust < 0)[0]
         if len(uboundi) == len(self.a_dust): pdb.set_trace()
         if len(uboundi) > 0:
@@ -375,9 +342,8 @@ class DebrisDisk:
     def ComputeBackgroundDustGrains(self, manual=False, beta=0.3, Nlaunchback=10):
         # Compute orbital parameters of launched dust grains
         # beta = Prad/Pgrav
+        #Nback: number of parent background orbits
         # Nlaunchback = launch points per parent body orbit
-        # if len(self.inputdata) <= 30:
-        #     return
         if "Nlaunchback" not in self.inputdata or "Nback" not in self.inputdata:
             return
         print("Computing Background Dust Grain Orbits...")
@@ -414,7 +380,6 @@ class DebrisDisk:
             cosfp = np.cos(fp)
             sinfp = np.sin(fp)
             if self.inputdata["betadistrb"] != 0:
-                truemax = 0
                 for j in range(len(cosfp)):  # for each dust grain
                     if self.inputdata["sizedistrb"] == 1:
                         self.beta_dust[i, j] = bd.Donhanyi(self.e[i], cosfp[j], betapow=betapow, betamin=betamin,
@@ -606,8 +571,6 @@ class DebrisDisk:
                         np.max((0, self.inputdata["Icent"] * np.pi / 180. - self.inputdata["I0"] * np.pi / 180.)), \
                         self.inputdata["Icent"] * np.pi / 180. + self.inputdata["I0"] * np.pi / 180.,
                         int(self.inputdata["Nback"]))
-                    # self.I0 = nr.uniform(0, 0.2)
-                    # print(self.I0)
                     self.e0 = nr.uniform(np.max((0, self.inputdata["ecent"] - self.inputdata["e0"])), \
                                          self.inputdata["ecent"] + self.inputdata["e0"],
                                          int(self.inputdata["Nback"]))
@@ -649,7 +612,6 @@ class DebrisDisk:
                 np.max((0, self.inputdata["Icent"] * np.pi / 180. - self.inputdata["I0"] * np.pi / 180.)), \
                 self.inputdata["I0"] * np.pi / 180. + self.inputdata["Icent"] * np.pi / 180.,
                 int(self.inputdata["Nback"]))
-            #Ifree = nr.uniform(0, 0.2, int(self.inputdata["Nback"]))
             omega = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nback"]))
             Omega = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nback"]))
             self.h = efree * np.sin(omega + Omega) + self.h0
@@ -667,17 +629,10 @@ class DebrisDisk:
         self.e = np.sqrt(self.h ** 2 + self.k ** 2)
 
 
-    # def GetRandomDirection(self, ratio):
-    #     dv_x = np.random.normal()
-    #     dv_y = np.random.normal()
-    #     dv_z = np.random.normal()
-    #     norm = math.pow(dv_x ** 2 + dv_y ** 2 + dv_z ** 2, 0.5)
-    #     return np.array([dv_x, dv_y, dv_y]) / norm
-
-    # returns the orbital elements (a, e, i, O, w, f) of an orbit
-    # calculated based on  r0, v0 (= v + dv), mu (= GM)
-    # eps controls for numerical precision
     def get_orbital_elements(self, r0, v, dv, mu, eps):
+        # returns the orbital elements (a, e, i, O, w, f) of an orbit
+        # calculated based on  r0, v0 (= v + dv), mu (= GM)
+        # eps controls for numerical precision
         def get_norm(vector):
             return np.linalg.norm(vector)
 
@@ -755,6 +710,7 @@ class DebrisDisk:
         dv = dv_mag * (dv_x * i_dir + dv_y * j_dir + dv_z * k_dir) / norm
         return self.get_orbital_elements(r0, v, dv, mu, eps)
 
+    # returns the P1 rotation matrix. See Murray and Dermott p.50 for details
     def get_p1_matrix(self, w):
         P1 = np.zeros((3, 3))
         P1[0][0] = np.cos(w)

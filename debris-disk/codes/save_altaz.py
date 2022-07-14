@@ -17,9 +17,11 @@ fstr = sys.argv[3]
 alt = float(sys.argv[4])
 az = float(sys.argv[5])
 ar = np.float(sys.argv[6])
-if len(sys.argv) > 6:
-    Nd = np.float(sys.argv[7])
-    print(Nd)
+if len(sys.argv) > 7:
+    #print(len(sys.argv))
+    #print(sys.argv)
+    Nd = int(sys.argv[7])
+    #print(Nd)
 else:
     Nd = 100
 

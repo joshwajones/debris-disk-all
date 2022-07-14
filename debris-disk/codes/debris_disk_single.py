@@ -707,8 +707,72 @@ class DebrisDisk:
                 f = 2 * np.pi - f
         return (a, ecc, I, Omega, w, f)
 
+
+    def get_orbital_elements_opt(self, r0, v, dv, mu, eps):
+        # returns the orbital elements (a, e, i, O, w, f) of an orbit
+        # calculated based on  r0, v0 (= v + dv), mu (= GM)
+        # eps controls for numerical precision
+        def get_norm(vector):
+            return np.linalg.norm(vector)
+
+        k_dir = np.array([0, 0, 1])
+        v0 = v + dv
+        speed = get_norm(v0)
+        radius = get_norm(r0)
+
+        h_vec = np.cross(r0, v0)
+        h = get_norm(h_vec)
+        h_z = h_vec[2]
+        node_vec = np.cross(k_dir, h_vec)
+        n = get_norm(node_vec)
+        n_x = node_vec[0]
+
+        scaled_r_vec = (speed ** 2 - mu / radius) * r0
+        scaled_v_vec = (r0 @ v0) * v0
+        e_vec = (scaled_r_vec - scaled_v_vec) / mu
+        ecc = get_norm(e_vec)
+        Energy = (speed ** 2) / 2 - mu / radius
+
+        if abs(ecc - 1) < eps:
+            a = float('inf')
+        else:
+            a = - mu / (2 * Energy)
+
+        I = np.arccos(h_z / h)
+
+        if abs(ecc) < eps:  # circular
+            if abs(I) < eps or abs(I - np.pi) < eps:  # equatorial
+                f = np.arccos(r0[0] / radius)
+                if v0[0] > 0:
+                    f = 2 * np.pi - f
+                w = 0  # "periapsis" at launch
+                Omega = 0
+            else:
+                f = np.arccos((node_vec @ r0) / (n * radius))
+                if r0[2] < 0:
+                    f = 2 * np.pi - f
+                w = f
+                Omega = np.arccos(n_x / n)
+        else:
+            if abs(I) < eps or abs(I - np.pi) < eps:
+                Omega = 0  # convention
+                w = np.arctan2(e_vec[1], e_vec[0])
+                if np.cross(r0, v0)[2] < 0:
+                    w = 2 * np.pi - w
+            else:
+                Omega = np.arccos(n_x / n)
+                w = np.arccos((node_vec @ e_vec) / (n * ecc))
+            f = np.arccos((e_vec @ r0) / (ecc * radius))
+
+            if node_vec[1] < 0:
+                Omega = 2 * np.pi - Omega
+
+            if r0 @ v0 < 0:
+                f = 2 * np.pi - f
+        return (a, ecc, I, Omega, w, f)
+
     # Returns orbital elements of an orbit with random dv of a certain RATIO
-    def get_orbital_elements_rand_dv(self, r0, v, ratio, mu, eps):
+    def get_orbital_elements_rand_dv(self, r0, v, ratio, mu, eps, optimized=True):
         i_dir = np.array([1, 0, 0])
         j_dir = np.array([0, 1, 0])
         k_dir = np.array([0, 0, 1])
@@ -719,7 +783,10 @@ class DebrisDisk:
 
         norm = math.pow(dv_x ** 2 + dv_y ** 2 + dv_z ** 2, 0.5)
         dv = dv_mag * (dv_x * i_dir + dv_y * j_dir + dv_z * k_dir) / norm
-        return self.get_orbital_elements(r0, v, dv, mu, eps)
+        if optimized:
+            return self.get_orbital_elements_opt(r0, v, dv, mu, eps)
+        else:
+            return self.get_orbital_elements(r0, v, dv, mu, eps)
 
     # returns the P1 rotation matrix. See Murray and Dermott p.50 for details
     def get_p1_matrix(self, w):

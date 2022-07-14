@@ -38,15 +38,21 @@ class DebrisDisk:
         self.omega_all = []
         self.beta_all = []
         self.beta_bounded = False
+        self.verbose = False
+        self.print_every_x_dust = 0
+        if "verbose" in self.inputdata:
+            self.verbose = self.inputdata["verbose"]
+            if "print_every_x_dust" in self.inputdata:
+                self.print_every_x_dust = self.inputdata["print_every_x_dust"]
 
     def AddSinglePlanet(self, manual=False, Mp=4., ap=5., ep=0.25, Ip=0., Omegap=0., omegap=0.):
         # Add a planet
         # Mp: planet mass in Mearth
         # ap: planet semi-major axis in AU
         # ep: planet eccentricity
-        # Ip: initial mutual inclination
-        # Omegap: nodal angle
-        # omegap: argument of periapse
+        # Ip: initial mutual inclination IN DEGREES
+        # Omegap: nodal angle IN DEGREES
+        # omegap: argument of periapse IN DEGREES
         if manual:
             self.Mp.append(Mp)
             self.ap.append(ap)
@@ -237,6 +243,7 @@ class DebrisDisk:
                 sinfp = np.ones(Nlaunch)
             if self.inputdata["betadistrb"] != 0:
                 for j in range(len(cosfp)):  # for each dust grain
+
                     if self.inputdata["sizedistrb"] == 1:
                         self.beta_dust[i, j] = bd.Donhanyi(self.e[i], cosfp[j], betapow=betapow, betamin=betamin,
                                                            betamax=betamax, Ndust=1, beta_bounded=self.beta_bounded,
@@ -254,8 +261,8 @@ class DebrisDisk:
                 P1 = self.get_p1_matrix(w=self.omega[i])
                 P2 = self.get_p2_matrix(I=self.I[i])
                 P3 = self.get_p3_matrix(om=self.Omega[i])
-                M = P3 @ P2 @ P1
-                # print("MADE IT::::::::2.1")
+                M = P3 @ P2 @ P1 # M matrix translates coordinates from orbital plane to equatorial system
+                #numpy optimizations:
                 # radius = self.a[i] * (1 - self.e[i] ** 2) / ( 1 + self.e[i] * cosfp)
                 # velocity = np.sqrt(consts.G * self.Mstar * (2 / radius - 1 / self.a[i]))
                 # drdt = self.a[i] * (1 - self.e[i] ** 2) * self.e[i] * sinfp / ((1 + self.e[i] * cosfp) ** 2)
@@ -271,7 +278,10 @@ class DebrisDisk:
                 # num = radius * cosfp - drdt * sinfp
                 # div_zero = np.where(abs(-1 * radius * sinfp + drdt * cosfp) < 1e-40)
                 # denom =
+                #numpy optimizations end
                 for j in range(len(self.a_dust[i])): #for each dust particle launched from this parent body
+                    if self.verbose and j % self.print_every_x_dust == 0:
+                        print("Computing jth dust grain...")
                     radius = self.a[i] * (1 - self.e[i] ** 2) / (1 + self.e[i] * cosfp[j])
                     velocity = np.sqrt(consts.G * self.Mstar * (2 / radius - 1 / self.a[i]))
                     drdt = self.a[i] * (1 - self.e[i] ** 2) * self.e[i] * sinfp[j] / ((1 + self.e[i] * cosfp[j]) ** 2)
@@ -338,11 +348,12 @@ class DebrisDisk:
             self.beta_dust = self.beta_dust[goodi]
 
         self.SaveValues()
+        print("Dust grains computed.")
 
     def ComputeBackgroundDustGrains(self, manual=False, beta=0.3, Nlaunchback=10):
         # Compute orbital parameters of launched dust grains
         # beta = Prad/Pgrav
-        #Nback: number of parent background orbits
+        # Nback: number of parent background orbits
         # Nlaunchback = launch points per parent body orbit
         if "Nlaunchback" not in self.inputdata or "Nback" not in self.inputdata:
             return
@@ -375,7 +386,7 @@ class DebrisDisk:
 
         for i in range(len(self.h)):  # for each parent body
             print("%i/%i background parent body" % (i + 1, len(self.h)))
-            fp = nr.uniform(0, 2 * np.pi, Nlaunchback)  # get true anomaly for each
+            fp = nr.uniform(0, 2 * np.pi, Nlaunchback)  # get random true anomaly for each
             lps[i] = fp
             cosfp = np.cos(fp)
             sinfp = np.sin(fp)

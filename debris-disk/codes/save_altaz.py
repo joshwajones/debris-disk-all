@@ -33,8 +33,8 @@ if len(sys.argv) > 8:
 
 include_depth = False
 include_azfirst = False
-alt_only = False
-if include_depth:   
+alt_only = True
+if include_depth:
     Image_alt, Image_az, col, opt = scatter_image.MakeImage("../dustorbit/%s_dustorbit.txt" % fstr, aspect_ratio=ar,
                                                             resolution=0.1, obsincl=alt, maxa=maxa, d=d, obsazim=az,
                                                             Ndust=Nd,

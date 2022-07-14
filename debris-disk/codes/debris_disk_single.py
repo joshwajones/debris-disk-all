@@ -281,7 +281,7 @@ class DebrisDisk:
                 #numpy optimizations end
                 for j in range(len(self.a_dust[i])): #for each dust particle launched from this parent body
                     if self.verbose and j % self.print_every_x_dust == 0:
-                        print("Computing jth dust grain...")
+                        print(f"Computing {j}th dust grain...")
                     radius = self.a[i] * (1 - self.e[i] ** 2) / (1 + self.e[i] * cosfp[j])
                     velocity = np.sqrt(consts.G * self.Mstar * (2 / radius - 1 / self.a[i]))
                     drdt = self.a[i] * (1 - self.e[i] ** 2) * self.e[i] * sinfp[j] / ((1 + self.e[i] * cosfp[j]) ** 2)

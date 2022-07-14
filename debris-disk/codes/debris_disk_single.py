@@ -166,7 +166,7 @@ class DebrisDisk:
                 np.max((0, self.inputdata["Icent"] * np.pi / 180. - self.inputdata["I0"] * np.pi / 180.)), \
                 self.inputdata["I0"] * np.pi / 180. + self.inputdata["Icent"] * np.pi / 180.,
                 int(self.inputdata["Nparticles"]))
-            if self.inputdata["launchstyle"] >= 4: #if parent body orbits should be apsidally aligned
+            if self.inputdata["launchstyle"] >= 4: #if parent body orbits should be aligned
                 omega = np.zeros(int(self.inputdata["Nparticles"]))
                 Omega = np.zeros(int(self.inputdata["Nparticles"]))
             else:

@@ -17,7 +17,7 @@ def Donhanyi(e, cosf, betapow=1.5, betamin=0.001, betamax=1, Ndust=100000, beta_
         a *= consts.au2cm
         mu = consts.G * Mstar
         half_period_term = pow((mu * Tage ** 2 / (np.pi ** 2)), 1./3.)
-        f_betamax = (1. - e ** 2) * (a - half_period_term)/(a * (1. - e ** 2) - 2. * half_period_term * (1. - e * cosf))
+        f_betamax = (1. - e ** 2) * (a - half_period_term)/(a * (1. - e ** 2) - 2. * half_period_term * (1. + e * cosf))
     else: 
         f_betamax = (1-e**2)/2./(1+e*cosf)
     if f_betamax > 1: f_betamax = betamax
@@ -35,7 +35,7 @@ def OrbTimeCorr(e, cosf, betapow=1.5, betamin=0.001, betamax=1, Ndust=100000, st
         mu = consts.G * Mstar
         half_period_term = pow((mu * Tage ** 2 / (np.pi ** 2)), 1. / 3.)
         f_betamax = stabfac * (1. - e ** 2) * (a - half_period_term) / (
-                    a * (1. - e ** 2) - 2. * half_period_term * (1. - e * cosf))
+                    a * (1. - e ** 2) - 2. * half_period_term * (1. + e * cosf))
     else:
         f_betamax = (1 - e ** 2) / 2. / (1 + e * cosf) * stabfac
     if f_betamax > 1: f_betamax = betamax*stabfac

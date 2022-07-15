@@ -16,6 +16,8 @@ import prob_position_orbit as ppo
 import consts
 import pdb
 import math
+import datetime
+import time
 
 
 class DebrisDisk:
@@ -189,7 +191,9 @@ class DebrisDisk:
         # Compute orbital parameters of launched dust grains
         # beta = Prad/Pgrav
         # Nlaunch = launch points per parent body orbit
-        print("Computing Dust Grain Orbits...")
+        # print("Computing Dust Grain Orbits...")
+        # ct = datetime.datetime.now()
+        # print("current time:-", ct)
         if manual:
             self.beta = beta
             Nlaunch = Nlaunch
@@ -214,7 +218,9 @@ class DebrisDisk:
 
         lps = np.zeros((len(self.h), Nlaunch))
         mu = consts.G * self.Mstar
-
+        matrix_time = 0
+        ejecta_time = 0
+        beta_time = 0
         for i in range(len(self.h)):  # for each parent body
             print("%i/%i parent body" % (i + 1, len(self.h)))
             if self.inputdata["launchstyle"] == 1:
@@ -241,12 +247,19 @@ class DebrisDisk:
                 # all from quadrature
                 cosfp = np.zeros(Nlaunch)
                 sinfp = np.ones(Nlaunch)
+            # print("Entered ejecta block")
+            # ct = datetime.datetime.now()
+            # print("current time:-", ct)
             if "ejected" in self.inputdata and self.inputdata["ejected"] == 1: #including ejecta velocity
+                start_matrices = time.time()
                 dv_ratio = self.inputdata["dv_ratio"]
                 P1 = self.get_p1_matrix(w=self.omega[i])
                 P2 = self.get_p2_matrix(I=self.I[i])
                 P3 = self.get_p3_matrix(om=self.Omega[i])
                 M = P3 @ P2 @ P1 # M matrix translates coordinates from orbital plane to equatorial system
+                # print("Computed matrices, entering for loop")
+                # ct = datetime.datetime.now()
+                # print("current time:-", ct)
                 #numpy optimizations:
                 # radius = self.a[i] * (1 - self.e[i] ** 2) / ( 1 + self.e[i] * cosfp)
                 # velocity = np.sqrt(consts.G * self.Mstar * (2 / radius - 1 / self.a[i]))
@@ -264,9 +277,12 @@ class DebrisDisk:
                 # div_zero = np.where(abs(-1 * radius * sinfp + drdt * cosfp) < 1e-40)
                 # denom =
                 #numpy optimizations end
+                end_matrices = time.time()
+                matrix_time += end_matrices - start_matrices
                 for j in range(len(self.a_dust[i])): #for each dust particle launched from this parent body
                     if self.verbose and j % self.print_every_x_dust == 0:
                         print(f"Computing {j}th dust grain...")
+                    start_ejecta = time.time()
                     radius = self.a[i] * (1 - self.e[i] ** 2) / (1 + self.e[i] * cosfp[j])
                     velocity = np.sqrt(consts.G * self.Mstar * (2 / radius - 1 / self.a[i]))
                     drdt = self.a[i] * (1 - self.e[i] ** 2) * self.e[i] * sinfp[j] / ((1 + self.e[i] * cosfp[j]) ** 2)
@@ -286,6 +302,8 @@ class DebrisDisk:
                     a, e, I, O, w, f = self.get_orbital_elements_rand_dv(coords_eq, velocity_eq, dv_ratio, mu, 1e-40)
                     cosf = np.cos(f)
                     sinf = np.sin(f)
+                    end_ejecta = time.time()
+                    ejecta_time += end_ejecta - start_ejecta
                     if self.inputdata["betadistrb"] != 0:
                         if self.inputdata["sizedistrb"] == 1:
                             self.beta_dust[i, j] = bd.Donhanyi(e, cosf, betapow=betapow,
@@ -303,6 +321,8 @@ class DebrisDisk:
                             self.beta_dust[i, j] = bd.OrbTimeCorrCirc(betapow=betapow, betamin=betamin, Ndust=1,
                                                                       beta_bounded=self.beta_bounded, a=a,
                                                                       Mstar=self.Mstar, Tage=self.age)
+                    end_beta = time.time()
+                    beta_time += end_beta - end_ejecta
                     self.a_dust[i][j] = (1 - self.beta_dust[i][j]) * a * (1 - e ** 2) / (
                                 1 - e ** 2 - 2 * self.beta_dust[i][j] * (1 + e * cosf))
                     self.e_dust[i][j] = np.sqrt(
@@ -314,6 +334,8 @@ class DebrisDisk:
                     self.Omega_dust[i][j] = O
                     cosfp[i] = cosf
                     sinfp[i] = sinf
+                    end_ejecta = time.time()
+                    ejecta_time += end_ejecta - end_beta
             else:
                 if self.inputdata["betadistrb"] != 0:
                     for j in range(len(cosfp)):  # for each dust grain
@@ -343,7 +365,9 @@ class DebrisDisk:
             uboundi = np.where(self.a_dust[i, :] < 0)[0] 
             # if len(uboundi) > 0 and self.inputdata["betadistrb"] != 0:
             #     pdb.set_trace()
-
+        # print("finished with betas and calculations")
+        # ct = datetime.datetime.now()
+        # print("current time:-", ct)
         lps = lps.flatten()
         np.savetxt('launchpoints.txt', lps)
 
@@ -367,6 +391,9 @@ class DebrisDisk:
 
         self.SaveValues()
         print("Dust grains computed.")
+        print("Time spent computing matrices:  ", matrix_time)
+        print("Time spent computing orbital elements and ejecta:  ", ejecta_time)
+        print("Time spent computing betas:  ", beta_time)
 
     def ComputeBackgroundDustGrains(self, manual=False, beta=0.3, Nlaunchback=10):
         # Compute orbital parameters of launched dust grains

@@ -38,7 +38,7 @@ def OrbTimeCorr(e, cosf, betapow=1.5, betamin=0.001, betamax=1, Ndust=100000, st
                     a * (1. - e ** 2) - 2. * half_period_term * (1. + e * cosf))
     else:
         f_betamax = (1 - e ** 2) / 2. / (1 + e * cosf) * stabfac
-    if f_betamax > 1: f_betamax = betamax*stabfac
+    if f_betamax > 1: f_betamax = betamax*stabfac   
     norm = sint.quad(dNdbeta, betamin, f_betamax)[0]
 
     Nbeta = lambda beta: sint.quad(dNdbeta, betamin, beta)[0]/norm

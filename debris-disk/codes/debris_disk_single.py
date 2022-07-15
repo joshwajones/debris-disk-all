@@ -241,21 +241,6 @@ class DebrisDisk:
                 # all from quadrature
                 cosfp = np.zeros(Nlaunch)
                 sinfp = np.ones(Nlaunch)
-            if self.inputdata["betadistrb"] != 0:
-                for j in range(len(cosfp)):  # for each dust grain
-
-                    if self.inputdata["sizedistrb"] == 1:
-                        self.beta_dust[i, j] = bd.Donhanyi(self.e[i], cosfp[j], betapow=betapow, betamin=betamin,
-                                                           betamax=betamax, Ndust=1, beta_bounded=self.beta_bounded,
-                                                           a=self.a[i], Mstar=self.Mstar, Tage=self.age)
-                    elif self.inputdata["sizedistrb"] == 2:
-                        self.beta_dust[i, j] = bd.OrbTimeCorr(self.e[i], cosfp[j], betapow=betapow, betamin=betamin,
-                                                              betamax=betamax, Ndust=1, beta_bounded=self.beta_bounded,
-                                                              a=self.a[i], Mstar=self.Mstar, Tage=self.age)
-                    elif self.inputdata["sizedistrb"] == 3:
-                        self.beta_dust[i, j] = bd.OrbTimeCorrCirc(betapow=betapow, betamin=betamin, Ndust=1,
-                                                                  beta_bounded=self.beta_bounded, a=self.a[i],
-                                                                  Mstar=self.Mstar, Tage=self.age)
             if "ejected" in self.inputdata and self.inputdata["ejected"] == 1: #including ejecta velocity
                 dv_ratio = self.inputdata["dv_ratio"]
                 P1 = self.get_p1_matrix(w=self.omega[i])
@@ -301,6 +286,23 @@ class DebrisDisk:
                     a, e, I, O, w, f = self.get_orbital_elements_rand_dv(coords_eq, velocity_eq, dv_ratio, mu, 1e-40)
                     cosf = np.cos(f)
                     sinf = np.sin(f)
+                    if self.inputdata["betadistrb"] != 0:
+                        if self.inputdata["sizedistrb"] == 1:
+                            self.beta_dust[i, j] = bd.Donhanyi(e, cosf, betapow=betapow,
+                                                               betamin=betamin,
+                                                               betamax=betamax, Ndust=1,
+                                                               beta_bounded=self.beta_bounded,
+                                                               a=a, Mstar=self.Mstar, Tage=self.age)
+                        elif self.inputdata["sizedistrb"] == 2:
+                            self.beta_dust[i, j] = bd.OrbTimeCorr(e, cosf, betapow=betapow,
+                                                                  betamin=betamin,
+                                                                  betamax=betamax, Ndust=1,
+                                                                  beta_bounded=self.beta_bounded,
+                                                                  a=a, Mstar=self.Mstar, Tage=self.age)
+                        elif self.inputdata["sizedistrb"] == 3:
+                            self.beta_dust[i, j] = bd.OrbTimeCorrCirc(betapow=betapow, betamin=betamin, Ndust=1,
+                                                                      beta_bounded=self.beta_bounded, a=a,
+                                                                      Mstar=self.Mstar, Tage=self.age)
                     self.a_dust[i][j] = (1 - self.beta_dust[i][j]) * a * (1 - e ** 2) / (
                                 1 - e ** 2 - 2 * self.beta_dust[i][j] * (1 + e * cosf))
                     self.e_dust[i][j] = np.sqrt(
@@ -313,6 +315,22 @@ class DebrisDisk:
                     cosfp[i] = cosf
                     sinfp[i] = sinf
             else:
+                if self.inputdata["betadistrb"] != 0:
+                    for j in range(len(cosfp)):  # for each dust grain
+
+                        if self.inputdata["sizedistrb"] == 1:
+                            self.beta_dust[i, j] = bd.Donhanyi(self.e[i], cosfp[j], betapow=betapow, betamin=betamin,
+                                                               betamax=betamax, Ndust=1, beta_bounded=self.beta_bounded,
+                                                               a=self.a[i], Mstar=self.Mstar, Tage=self.age)
+                        elif self.inputdata["sizedistrb"] == 2:
+                            self.beta_dust[i, j] = bd.OrbTimeCorr(self.e[i], cosfp[j], betapow=betapow, betamin=betamin,
+                                                                  betamax=betamax, Ndust=1,
+                                                                  beta_bounded=self.beta_bounded,
+                                                                  a=self.a[i], Mstar=self.Mstar, Tage=self.age)
+                        elif self.inputdata["sizedistrb"] == 3:
+                            self.beta_dust[i, j] = bd.OrbTimeCorrCirc(betapow=betapow, betamin=betamin, Ndust=1,
+                                                                      beta_bounded=self.beta_bounded, a=self.a[i],
+                                                                      Mstar=self.Mstar, Tage=self.age)
                 self.a_dust[i, :] = (1 - self.beta_dust[i, :]) * self.a[i] * (1 - self.e[i] ** 2) / \
                                     (1 - self.e[i] ** 2 - 2 * self.beta_dust[i, :] * (1 + self.e[i] * cosfp))
                 self.e_dust[i, :] = np.sqrt(

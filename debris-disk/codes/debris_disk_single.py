@@ -18,6 +18,7 @@ import pdb
 import math
 import datetime
 import time
+import random
 
 
 class DebrisDisk:
@@ -194,6 +195,10 @@ class DebrisDisk:
         # print("Computing Dust Grain Orbits...")
         # ct = datetime.datetime.now()
         # print("current time:-", ct)
+        diff_sum = 0
+        max_diff = -1
+        start_time = time.time()
+        weird_beta = []
         if manual:
             self.beta = beta
             Nlaunch = Nlaunch
@@ -208,7 +213,7 @@ class DebrisDisk:
             self.beta_dust = np.zeros((len(self.h), Nlaunch))
 
         self.beta_bounded = False
-        if "beta_bounded" in self.inputdata and self.inputdata["beta_bounded"] == 1:
+        if ("beta_bounded" in self.inputdata and self.inputdata["beta_bounded"] == 1) or ("beta_change" in self.inputdata and self.inputdata["beta_change"] == 1):
             self.beta_bounded = True
         self.a_dust = np.zeros((len(self.h), Nlaunch))  # len(self.h) is NParticles - this is Nparticles x Nlaunch array
         self.e_dust = np.zeros((len(self.h), Nlaunch))
@@ -279,6 +284,9 @@ class DebrisDisk:
                 #numpy optimizations end
                 end_matrices = time.time()
                 matrix_time += end_matrices - start_matrices
+                inverseCDF, approximate_betamax = bd.get_approx_interp(self.e[i], 1, betapow=betapow, betamin=betamin,
+                                                               betamax=betamax, Ndust=1, beta_bounded=self.beta_bounded,
+                                                               a=self.a[i], Mstar=self.Mstar, Tage=self.age)
                 for j in range(len(self.a_dust[i])): #for each dust particle launched from this parent body
                     if self.verbose and j % self.print_every_x_dust == 0:
                         print(f"Computing {j}th dust grain...")
@@ -312,11 +320,46 @@ class DebrisDisk:
                                                                beta_bounded=self.beta_bounded,
                                                                a=a, Mstar=self.Mstar, Tage=self.age)
                         elif self.inputdata["sizedistrb"] == 2:
-                            self.beta_dust[i, j] = bd.OrbTimeCorr(e, cosf, betapow=betapow,
+                            # self.beta_dust[i, j], other = bd.OrbTimeCorr_opt(e, cosf, betapow=betapow,
+                            #                                       betamin=betamin,
+                            #                                       betamax=betamax, Ndust=1,
+                            #                                       beta_bounded=self.beta_bounded,
+                            #                                       a=a, Mstar=self.Mstar, Tage=self.age)
+                            # diff = abs(self.beta_dust[i, j] - other)
+                            # max_diff = max(diff, max_diff)
+                            # #print(diff_sum)
+                            # diff_sum += diff
+                            # print(self.beta_bounded)
+                            # if math.isnan(diff_sum):
+                            #     pdb.set_trace()
+                            # rand_seed = random.randint(0, 1000)
+                            # nr.default_rng(seed=rand_seed)
+                            num_seed = nr.uniform(0, 1, 1)
+                            approx = bd.OrbTimeCorr_opt_approx(num_seed, inverseCDF, approximate_betamax, e, cosf, betapow=betapow,
                                                                   betamin=betamin,
                                                                   betamax=betamax, Ndust=1,
                                                                   beta_bounded=self.beta_bounded,
-                                                                  a=a, Mstar=self.Mstar, Tage=self.age)
+                                                                  a=a, Mstar=self.Mstar, Tage=self.age, idx=j)
+
+                            self.beta_dust[i, j] = approx
+                            # nr.default_rng(seed=rand_seed)
+                            # self.beta_dust[i, j], betamax_true =  bd.OrbTimeCorr(num_seed, e, cosf, betapow=betapow,
+                            #                                       betamin=betamin,
+                            #                                       betamax=betamax, Ndust=1,
+                            #                                       beta_bounded=self.beta_bounded,
+                            #                                       a=a, Mstar=self.Mstar, Tage=self.age)
+                            #
+                            # #print(approx, self.beta_dust[i, j])
+                            # diff = abs(self.beta_dust[i, j] - approx)
+                            # #max_diff = max(diff, max_diff)
+                            # if diff > max_diff:
+                            #     max_diff = diff
+                            #     weird_beta.append([approx, self.beta_dust[i, j], approximate_betamax, betamax_true])
+                            # #print(diff_sum)
+                            # diff_sum += diff
+                            # if math.isnan(diff_sum):
+                            #     pdb.set_trace()
+
                         elif self.inputdata["sizedistrb"] == 3:
                             self.beta_dust[i, j] = bd.OrbTimeCorrCirc(betapow=betapow, betamin=betamin, Ndust=1,
                                                                       beta_bounded=self.beta_bounded, a=a,
@@ -345,7 +388,7 @@ class DebrisDisk:
                                                                betamax=betamax, Ndust=1, beta_bounded=self.beta_bounded,
                                                                a=self.a[i], Mstar=self.Mstar, Tage=self.age)
                         elif self.inputdata["sizedistrb"] == 2:
-                            self.beta_dust[i, j] = bd.OrbTimeCorr(self.e[i], cosfp[j], betapow=betapow, betamin=betamin,
+                            self.beta_dust[i, j] = bd.OrbTimeCorr_opt(self.e[i], cosfp[j], betapow=betapow, betamin=betamin,
                                                                   betamax=betamax, Ndust=1,
                                                                   beta_bounded=self.beta_bounded,
                                                                   a=self.a[i], Mstar=self.Mstar, Tage=self.age)
@@ -394,6 +437,12 @@ class DebrisDisk:
         print("Time spent computing matrices:  ", matrix_time)
         print("Time spent computing orbital elements and ejecta:  ", ejecta_time)
         print("Time spent computing betas:  ", beta_time)
+        end_time = time.time()
+        print("Total time: ", end_time - start_time)
+        print()
+        print(weird_beta)
+        print("Average difference:  ", diff_sum / Nlaunch)
+        print("Maximum difference:  ", max_diff)
 
     def ComputeBackgroundDustGrains(self, manual=False, beta=0.3, Nlaunchback=10):
         # Compute orbital parameters of launched dust grains

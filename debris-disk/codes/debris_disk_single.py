@@ -836,19 +836,25 @@ class DebrisDisk:
 
         if abs(ecc) < eps:  # circular
             if abs(I) < eps or abs(I - np.pi) < eps:  # equatorial
+                print("Circular, equatorial case")
+                pdb.set_trace()
                 f = np.arccos(r0[0] / radius)
                 if v0[0] > 0:
                     f = 2 * np.pi - f
                 w = 0  # "periapsis" at launch
                 Omega = 0
             else:
+                print("Circular, inclined case")
+                pdb.set_trace()
                 f = np.arccos((node_vec @ r0) / (n * radius))
                 if r0[2] < 0:
                     f = 2 * np.pi - f
-                w = f
+                w = f # SUSPECT - w = 0? -f
                 Omega = np.arccos(n_x / n)
-        else:
-            if abs(I) < eps or abs(I - np.pi) < eps:
+        else: # eccentric
+            if abs(I) < eps or abs(I - np.pi) < eps: # equatorial
+                print("Eccentric, equatorial case")
+                pdb.set_trace()
                 Omega = 0  # convention
                 w = np.arctan2(e_vec[1], e_vec[0])
                 if np.cross(r0, v0)[2] < 0:
@@ -863,6 +869,11 @@ class DebrisDisk:
 
             if r0 @ v0 < 0:
                 f = 2 * np.pi - f
+
+            if e_vec[2] < 0:
+                w = 2 * np.pi - w
+
+
         return (a, ecc, I, Omega, w, f)
 
     # Returns orbital elements of an orbit with random dv of a certain RATIO

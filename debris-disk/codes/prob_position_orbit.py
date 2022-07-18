@@ -12,7 +12,15 @@ import scipy.interpolate as sint
 import matplotlib.pyplot as pl
 import pdb
 
+def GetMeanToTrueAnomalyFunc(e, Npts=100000):
+    E = np.linspace(-np.pi, np.pi, Npts)
+    M = E - e * np.sin(E)
+    finvM = sint.interp1d(M, E)  # put this elsewhere for optimization
+    return finvM
+    
+
 def OutputPosition(e, Npts=100, verbose=False):
+    
     E = np.linspace(-np.pi, np.pi, Npts)
     M = E - e*np.sin(E)
     finvM = sint.interp1d(M, E) #put this elsewhere for optimization

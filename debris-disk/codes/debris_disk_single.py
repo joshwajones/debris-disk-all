@@ -224,7 +224,7 @@ class DebrisDisk:
         mu = consts.G * self.Mstar
         matrix_time = 0
         ejecta_time = 0
-        beta_time = 0
+        beta_calcs_time = 0
         beta_application_time = 0
         for i in range(len(self.h)):  # for each parent body
             print("%i/%i parent body" % (i + 1, len(self.h)))
@@ -301,18 +301,18 @@ class DebrisDisk:
                     self.e_initial[j] = e
                     self.I_initial[j] = I
                     self.Omega_initial[j] = O
-                    self.omega_initial[i, j] = w
-                    self.sinf_initial[i, j] = np.sin(f)
-                    self.cosf_initial[i, j] = np.cos(f)
-                    self.e_max = max(self.e_max, self.e_initial[i, j])
-                    self.cosf_max = max(self.cosf_max, self.cosf_initial[i, j])
+                    self.omega_initial[j] = w
+                    self.sinf_initial[j] = np.sin(f)
+                    self.cosf_initial[j] = np.cos(f)
+                    self.e_max = max(self.e_max, self.e_initial[j])
+                    self.cosf_max = max(self.cosf_max, self.cosf_initial[j])
             else: 
                 self.e_max = self.e[i]
                 self.cosf_max = np.max(cosfp)
             end_ejecta = time.time()
             ejecta_time += end_ejecta - start_ejecta
             start_beta_calcs = time.time()
-            inverseCDF, approximate_betamax = bd.get_inverse_CDF(self.e_max, self.cosf_max, betapow=betapow,
+            inverseCDF = bd.get_inverse_CDF(self.e_max, self.cosf_max, betapow=betapow,
                                                                    betamin=betamin,
                                                                    betamax=betamax, Ndust=1,
                                                                    beta_bounded=self.beta_bounded,
@@ -321,23 +321,21 @@ class DebrisDisk:
 
             self.beta_dust[i] = bd.OrbTimeCorr_Vectorized(inverseCDF, Nlaunch)
             end_beta_calcs = time.time()
-            beta_time += end_beta_calcs - start_beta_calcs
+            beta_calcs_time += end_beta_calcs - start_beta_calcs
 
             start_beta_application_time = time.time()
             for j in range(len(self.a_dust[i])):  # for each dust particle launched from this parent body
-                self.a_dust[i][j] = (1 - self.beta_dust[i][j]) * self.a_initial[i, j] * (1 - self.e_initial[i, j] ** 2) / (
-                            1 - self.e_initial[i, j] ** 2 - 2 * self.beta_dust[i][j] * (1 + self.e_initial[i, j] * self.cosf_initial[j]))
+                self.a_dust[i][j] = (1 - self.beta_dust[i][j]) * self.a_initial[j] * (1 - self.e_initial[j] ** 2) / (
+                            1 - self.e_initial[j] ** 2 - 2 * self.beta_dust[i][j] * (1 + self.e_initial[j] * self.cosf_initial[j]))
                 self.e_dust[i][j] = np.sqrt(
-                    self.e_initial[i, j] ** 2 + 2 * self.beta_dust[i][j] * self.e_initial[i, j] * self.cosf_initial[j] + self.beta_dust[i][j] ** 2) / (
+                    self.e_initial[j] ** 2 + 2 * self.beta_dust[i][j] * self.e_initial[j] * self.cosf_initial[j] + self.beta_dust[i][j] ** 2) / (
                                                 1 - self.beta_dust[i][j])
-                self.omega_dust[i][j] = self.omega_initial[i, j] + np.arctan2(self.beta_dust[i][j] * self.sinf_initial[j],
-                                                       self.e_initial[i, j] + self.beta_dust[i][j] * self.cosf_initial[j])
-                self.I_dust[i][j] = self.I_initial[i, j]
-                self.Omega_dust[i][j] = self.Omega_initial[i, j]
-                cosfp[i] = self.cosf_initial[i, j]
-                sinfp[i] = self.sinf_initial[i, j]
-                end_ejecta = time.time()
-                ejecta_time += end_ejecta - end_beta
+                self.omega_dust[i][j] = self.omega_initial[j] + np.arctan2(self.beta_dust[i][j] * self.sinf_initial[j],
+                                                       self.e_initial[j] + self.beta_dust[i][j] * self.cosf_initial[j])
+                self.I_dust[i][j] = self.I_initial[j]
+                self.Omega_dust[i][j] = self.Omega_initial[j]
+                cosfp[i] = self.cosf_initial[j]
+                sinfp[i] = self.sinf_initial[j]
 
             end_beta_application_time = time.time()
             beta_application_time += end_beta_application_time - start_beta_application_time
@@ -370,7 +368,7 @@ class DebrisDisk:
         print("Dust grains computed.")
         print("Time spent computing matrices:  ", matrix_time)
         print("Time spent computing orbital elements and ejecta:  ", ejecta_time)
-        print("Time spent computing betas:  ", beta_time)
+        print("Time spent computing betas:  ", beta_calcs_time)
         print("Time applying radiation pressure formulae:    ", beta_application_time)
         end_time = time.time()
         print("Total time: ", end_time - start_time)

@@ -10,8 +10,9 @@ import numpy as np
 import matplotlib.pyplot as pl
 import scatter_image
 import sys
+import time
 
-
+start_time = time.time()
 maxa = np.float(sys.argv[1])
 d = np.float(sys.argv[2]) 
 fstr = sys.argv[3]
@@ -58,4 +59,6 @@ else:
 
     np.savetxt("../images/imgrid/%ix%i/%s_Alt%04i_Az%04i_azfirst.txt" % (maxa, maxa * ar, fstr, alt, az), Image_az)
 np.savetxt("../images/imgrid/%ix%i/%s_Alt%04i_Az%04i.txt"%(maxa, maxa*ar,fstr,alt,az), Image_alt)
-
+end_time = time.time()
+total_time = end_time - start_time
+print("Total time:   ", total_time)

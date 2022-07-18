@@ -79,6 +79,7 @@ def MakeImage_altonly(dustfile, d=10, maxa=100., aspect_ratio=1., resolution=0.0
             Zind_alt = np.searchsorted(imy, z_alt * r / d)
             if Zind_alt < Npix_y and Xind_alt < Npix_x:
                 image_alt[Zind_alt, Xind_alt] += idust_alt
+                
     return image_alt
 
 def MakeImage(dustfile, d=10, maxa=100., aspect_ratio=1., resolution=0.05, L=1., g=0.5, Ndust=100, obsincl=5., obsazim=0., fixbeta=0., include_depth=False, verbose=False, every_x_print=0):

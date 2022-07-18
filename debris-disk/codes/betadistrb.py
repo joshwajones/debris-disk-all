@@ -137,7 +137,31 @@ def OrbTimeCorr_opt(e, cosf, betapow=1.5, betamin=0.001, betamax=0.5, Ndust=1000
     print(invNbeta(vals), trouble)
     return invNbeta(vals), trouble
 
-def get_approx_interp(e, cosf, betapow=1.5, betamin=0.001, betamax=1, Ndust=100000, stabfac = 0.998, beta_bounded=False, a=50, Mstar=1, Tage=float('inf')):
+def get_inverse_CDF(e=0, cosf=1, betapow=1.5, betamin=0.001, betamax=1, Ndust=100000, stabfac = 0.998, beta_bounded=False, a=50, Mstar=1, Tage=float('inf'), precision=100):
+    dNdbeta = lambda beta: beta ** betapow * (1 - beta) ** 1.5 * (1 - e ** 2 - 2 * beta * (1 + e * cosf)) ** -1.5
+    f_betamax = (1 - e ** 2) / 2. / (1 + e * cosf) * stabfac
+    if beta_bounded:
+        a *= consts.au2cm
+        mu = consts.G * Mstar
+        half_period_term = pow((mu * Tage ** 2 / (np.pi ** 2)), 1. / 3.)
+        maxbeta_calc = stabfac * (1. - e ** 2) * (a - half_period_term) / (
+                a * (1. - e ** 2) - 2. * half_period_term * (1. + e * cosf))
+        maxbeta_calc = max(maxbeta_calc, 0) #Handle case where < 0? happens for small-medium ages
+        f_betamax = min(f_betamax, maxbeta_calc)
+    if f_betamax > betamax:
+        f_betamax = stabfac * betamax
+
+    norm = sint.quad(dNdbeta, betamin, f_betamax)[0]
+    Nbeta = lambda beta: sint.quad(dNdbeta, betamin, beta)[0]/norm
+    Nbeta = np.vectorize(Nbeta)
+    invNbeta = si.interp1d(Nbeta(np.linspace(betamin * 0.8, f_betamax, precision)), np.linspace(betamin * 0.8, f_betamax, precision))
+    
+    return invNbeta
+
+
+def get_approx_interp(e, cosf, betapow=1.5, betamin=0.001, betamax=1, Ndust=100000, stabfac = 0.998, beta_bounded=False, a=50, Mstar=1, Tage=float('inf'), precision=100):
+
+
     e = 0 # approximate e~0
     dNdbeta = lambda beta: beta ** betapow * (1 - beta) ** 1.5 * (1 - e ** 2 - 2 * beta * (1 + e * cosf)) ** -1.5
     f_betamax = (1 - e ** 2) / 2. / (1 + e * cosf) * stabfac
@@ -154,9 +178,41 @@ def get_approx_interp(e, cosf, betapow=1.5, betamin=0.001, betamax=1, Ndust=1000
     norm = sint.quad(dNdbeta, betamin, f_betamax)[0]
     Nbeta = lambda beta: sint.quad(dNdbeta, betamin, beta)[0]/norm
     Nbeta = np.vectorize(Nbeta)
-    invNbeta_unscaled = si.interp1d(Nbeta(np.linspace(betamin * 0.8, f_betamax, 100)), np.linspace(betamin * 0.8, f_betamax, 100))
+    invNbeta_unscaled = si.interp1d(Nbeta(np.linspace(betamin * 0.8, f_betamax, precision)), np.linspace(betamin * 0.8, f_betamax, precision))
     return invNbeta_unscaled, f_betamax
 
+
+def OrbTimeCorr_Vectorized(inverseCDF, Nlaunch):
+    return inverseCDF(nr.uniform(0, 1, Nlaunch))
+
+
+def OrbTimeCorr_opt_approx(seed, inverseCDF, f_betamax_approximate, e, cosf, betapow=1.5, betamin=0.001, betamax=1,
+                           Ndust=100000, stabfac=0.998,
+                           beta_bounded=False, a=50, Mstar=1, Tage=float('inf'), idx=0):
+    f_betamax = (1 - e ** 2) / 2. / (1 + e * cosf) * stabfac
+    if beta_bounded:
+        a *= consts.au2cm
+        mu = consts.G * Mstar
+        half_period_term = pow((mu * Tage ** 2 / (np.pi ** 2)), 1. / 3.)
+        f_betamax = stabfac * (1. - e ** 2) * (a - half_period_term) / (
+                a * (1. - e ** 2) - 2. * half_period_term * (1. + e * cosf))
+    if f_betamax > 1: f_betamax = betamax * stabfac
+
+    # beta = inverseCDF(nr.uniform(0, 1, Ndust))
+    beta = inverseCDF(seed)
+    # exceeds_maxbeta = np.where(beta > f_betamax)
+    # for i in range(len(exceeds_maxbeta)):
+    #     print(beta, f_betamax)
+    #     print((beta > f_betamax)[0])
+    #     print(idx)
+    #     pdb.set_trace()
+    if (beta > f_betamax)[0]:
+        # print(beta, f_betamax)
+        # print((beta > f_betamax)[0])
+        beta *= f_betamax / f_betamax_approximate * stabfac
+        # print(idx)
+        # pdb.set_trace()
+    return beta
 
 def OrbTimeCorr_opt_approx(seed, inverseCDF, f_betamax_approximate, e, cosf, betapow=1.5, betamin=0.001, betamax=1, Ndust=100000, stabfac=0.998,
                           beta_bounded=False, a=50, Mstar=1, Tage=float('inf'), idx = 0):

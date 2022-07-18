@@ -188,6 +188,194 @@ class DebrisDisk:
         self.I = np.sqrt(self.p ** 2 + self.q ** 2)
         self.e = np.sqrt(self.h ** 2 + self.k ** 2)
 
+
+
+    def ComputeDustGrains_BetaOptimized(self, manual=False, beta=0.3, Nlaunch=10):
+        # Compute orbital parameters of launched dust grains
+        # beta = Prad/Pgrav
+        # Nlaunch = launch points per parent body orbit
+        # print("Computing Dust Grain Orbits...")
+        # ct = datetime.datetime.now()
+        # print("current time:-", ct)
+        start_time = time.time()
+        if manual:
+            self.beta = beta
+            Nlaunch = Nlaunch
+        elif self.inputdata["betadistrb"] == 0:
+            self.beta = self.inputdata["beta"]
+            Nlaunch = int(self.inputdata["Nlaunch"])
+            self.beta_dust = np.ones((len(self.h), Nlaunch)) * self.beta
+        else:
+            Nlaunch = int(self.inputdata["Nlaunch"])
+            betapow = self.inputdata["betadistrb"]
+            betamin, betamax = self.inputdata["betamin"], self.inputdata["betamax"]
+            self.beta_dust = np.zeros((len(self.h), Nlaunch))
+
+        self.beta_bounded = False
+        if ("beta_bounded" in self.inputdata and self.inputdata["beta_bounded"] == 1) or ("beta_change" in self.inputdata and self.inputdata["beta_change"] == 1):
+            self.beta_bounded = True
+        self.a_dust = np.zeros((len(self.h), Nlaunch))  # len(self.h) is NParticles - this is Nparticles x Nlaunch array
+        self.e_dust = np.zeros((len(self.h), Nlaunch))
+        self.I_dust = np.zeros((len(self.h), Nlaunch))
+        self.Omega_dust = np.zeros((len(self.h), Nlaunch))
+        self.omega_dust = np.zeros((len(self.h), Nlaunch))
+
+        lps = np.zeros((len(self.h), Nlaunch))
+        mu = consts.G * self.Mstar
+        matrix_time = 0
+        ejecta_time = 0
+        beta_time = 0
+        beta_application_time = 0
+        for i in range(len(self.h)):  # for each parent body
+            print("%i/%i parent body" % (i + 1, len(self.h)))
+            if self.inputdata["launchstyle"] == 1:
+                # uniform in f
+                fp = nr.uniform(0, 2*np.pi, Nlaunch)
+                lps[i] = fp
+                cosfp = np.cos(fp)
+                sinfp = np.sin(fp)
+            elif self.inputdata["launchstyle"] == 2:
+                # uniform in cosf
+                cosfp = nr.uniform(-1, 1) * np.ones(Nlaunch)
+                sinfp = nr.uniform(-1, 1) * np.ones(Nlaunch)
+            elif self.inputdata["launchstyle"] == 3:
+                # uniform in M
+                f, fweight = ppo.OutputPosition(self.e[i], Npts=Nlaunch)  # ??
+                lps[i] = f
+                cosfp = np.cos(f)
+                sinfp = np.sin(f)
+            elif self.inputdata["launchstyle"] == 4:
+                # all at peri
+                cosfp = np.ones(Nlaunch)
+                sinfp = np.zeros(Nlaunch)
+            elif self.inputdata["launchstyle"] == 5:
+                # all from quadrature
+                cosfp = np.zeros(Nlaunch)
+                sinfp = np.ones(Nlaunch)
+
+            #initial: orbital elements of dust grains before applying radiation pressure
+            self.a_initial = np.array(Nlaunch * [self.a[i]])
+            self.e_initial = np.array(Nlaunch * [self.e[i]])
+            self.I_initial = np.array(Nlaunch * [self.I[i]])
+            self.Omega_initial = np.array(Nlaunch * [self.Omega[i]])
+            self.omega_initial = np.array(Nlaunch * [self.omega[i]])
+            self.cosf_initial = cosfp
+            self.sinf_initial = sinfp
+            self.e_max = 0 
+            self.cosf_max = 0
+            start_ejecta = time.time()
+            #If ejected: calculate initial orbits after ejection, before radiation 
+            if "ejected" in self.inputdata and self.inputdata["ejected"] == 1: #including ejecta velocity
+                start_matrices = time.time()
+                dv_ratio = self.inputdata["dv_ratio"]
+                P1 = self.get_p1_matrix(w=self.omega[i])
+                P2 = self.get_p2_matrix(I=self.I[i])
+                P3 = self.get_p3_matrix(om=self.Omega[i])
+                M = P3 @ P2 @ P1 # M matrix translates coordinates from orbital plane to equatorial system
+
+                end_matrices = time.time()
+                matrix_time += end_matrices - start_matrices
+
+                for j in range(len(self.a_dust[i])): #for each dust particle launched from this parent body
+                    if self.verbose and j % self.print_every_x_dust == 0:
+                        print(f"Computing {j}th dust grain...")
+
+                    radius = self.a[i] * (1 - self.e[i] ** 2) / (1 + self.e[i] * cosfp[j])
+                    velocity = np.sqrt(consts.G * self.Mstar * (2 / radius - 1 / self.a[i]))
+                    drdt = self.a[i] * (1 - self.e[i] ** 2) * self.e[i] * sinfp[j] / ((1 + self.e[i] * cosfp[j]) ** 2)
+                    if abs(-1 * radius * sinfp[j] + drdt * cosfp[j]) < 1e-40:
+                        if cosfp[j] > 0:
+                            velocity_orbplane = [0, velocity, 0]
+                        else:
+                            velocity_orbplane = [0, -velocity, 0]
+                    else:
+                        dydx = (radius * cosfp[j] - drdt * sinfp[j]) / (-1 * radius * sinfp[j] + drdt * cosfp[j])
+                        velocity_orbplane = [1, dydx, 0]
+                        velocity_orbplane = velocity/np.linalg.norm(velocity_orbplane) * velocity_orbplane
+                    velocity_eq = M @ velocity_orbplane
+                    coords_orbplane = [radius * cosfp[j], radius * sinfp[j], 0]
+                    coords_eq = M @ coords_orbplane
+
+                    a, e, I, O, w, f = self.get_orbital_elements_rand_dv(coords_eq, velocity_eq, dv_ratio, mu, 1e-40)
+                    self.a_initial[j] = a
+                    self.e_initial[j] = e
+                    self.I_initial[j] = I
+                    self.Omega_initial[j] = O
+                    self.omega_initial[i, j] = w
+                    self.sinf_initial[i, j] = np.sin(f)
+                    self.cosf_initial[i, j] = np.cos(f)
+                    self.e_max = max(self.e_max, self.e_initial[i, j])
+                    self.cosf_max = max(self.cosf_max, self.cosf_initial[i, j])
+            else: 
+                self.e_max = self.e[i]
+                self.cosf_max = np.max(cosfp)
+            end_ejecta = time.time()
+            ejecta_time += end_ejecta - start_ejecta
+            start_beta_calcs = time.time()
+            inverseCDF, approximate_betamax = bd.get_inverse_CDF(self.e_max, self.cosf_max, betapow=betapow,
+                                                                   betamin=betamin,
+                                                                   betamax=betamax, Ndust=1,
+                                                                   beta_bounded=self.beta_bounded,
+                                                                   a=self.a[i], Mstar=self.Mstar, Tage=self.age,
+                                                                   precision=1000)
+
+            self.beta_dust[i] = bd.OrbTimeCorr_Vectorized(inverseCDF, Nlaunch)
+            end_beta_calcs = time.time()
+            beta_time += end_beta_calcs - start_beta_calcs
+
+            start_beta_application_time = time.time()
+            for j in range(len(self.a_dust[i])):  # for each dust particle launched from this parent body
+                self.a_dust[i][j] = (1 - self.beta_dust[i][j]) * self.a_initial[i, j] * (1 - self.e_initial[i, j] ** 2) / (
+                            1 - self.e_initial[i, j] ** 2 - 2 * self.beta_dust[i][j] * (1 + self.e_initial[i, j] * self.cosf_initial[j]))
+                self.e_dust[i][j] = np.sqrt(
+                    self.e_initial[i, j] ** 2 + 2 * self.beta_dust[i][j] * self.e_initial[i, j] * self.cosf_initial[j] + self.beta_dust[i][j] ** 2) / (
+                                                1 - self.beta_dust[i][j])
+                self.omega_dust[i][j] = self.omega_initial[i, j] + np.arctan2(self.beta_dust[i][j] * self.sinf_initial[j],
+                                                       self.e_initial[i, j] + self.beta_dust[i][j] * self.cosf_initial[j])
+                self.I_dust[i][j] = self.I_initial[i, j]
+                self.Omega_dust[i][j] = self.Omega_initial[i, j]
+                cosfp[i] = self.cosf_initial[i, j]
+                sinfp[i] = self.sinf_initial[i, j]
+                end_ejecta = time.time()
+                ejecta_time += end_ejecta - end_beta
+
+            end_beta_application_time = time.time()
+            beta_application_time += end_beta_application_time - start_beta_application_time
+            uboundi = np.where(self.a_dust[i, :] < 0)[0]
+            if len(uboundi) > 0 and self.inputdata["betadistrb"] != 0:
+                pdb.set_trace()
+
+        lps = lps.flatten()
+        np.savetxt('launchpoints.txt', lps)
+
+        self.a_dust = self.a_dust.flatten()
+        self.e_dust = self.e_dust.flatten()
+        self.I_dust = self.I_dust.flatten()
+        self.Omega_dust = self.Omega_dust.flatten()
+        self.omega_dust = self.omega_dust.flatten()
+        self.beta_dust = self.beta_dust.flatten()
+
+        uboundi = np.where(self.a_dust < 0)[0]
+        if len(uboundi) == len(self.a_dust): pdb.set_trace()
+        if len(uboundi) > 0:
+            goodi = np.where(self.a_dust > 0)[0]
+            self.a_dust = self.a_dust[goodi]
+            self.e_dust = self.e_dust[goodi]
+            self.I_dust = self.I_dust[goodi]
+            self.Omega_dust = self.Omega_dust[goodi]
+            self.omega_dust = self.omega_dust[goodi]
+            self.beta_dust = self.beta_dust[goodi]
+
+        self.SaveValues()
+        print("Dust grains computed.")
+        print("Time spent computing matrices:  ", matrix_time)
+        print("Time spent computing orbital elements and ejecta:  ", ejecta_time)
+        print("Time spent computing betas:  ", beta_time)
+        print("Time applying radiation pressure formulae:    ", beta_application_time)
+        end_time = time.time()
+        print("Total time: ", end_time - start_time)
+
+
     def ComputeDustGrains(self, manual=False, beta=0.3, Nlaunch=10):
         # Compute orbital parameters of launched dust grains
         # beta = Prad/Pgrav

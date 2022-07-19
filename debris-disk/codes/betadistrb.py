@@ -32,7 +32,7 @@ def f_Donhanyi(betapow=1.5, betamin=0.001, betamax=1):
     f = lambda P: (P*(betamax**(1+betapow)-betamin**(1+betapow))+betamin**(1+betapow))**(1./(1+betapow))
     return np.vectorize(f)
 
-def OrbTimeCorr(seed, e, cosf, betapow=1.5, betamin=0.001, betamax=1, Ndust=100000, stabfac = 0.998, beta_bounded=False, a=50, Mstar=1, Tage=float('inf')):
+def OrbTimeCorr(seed=-1, e=0, cosf=0, betapow=1.5, betamin=0.001, betamax=1, Ndust=100000, stabfac = 0.998, beta_bounded=False, a=50, Mstar=1, Tage=float('inf')):
     dNdbeta = lambda beta: beta**betapow*(1-beta)**1.5*(1-e**2-2*beta*(1+e*cosf))**-1.5
     f_betamax = (1 - e ** 2) / 2. / (1 + e * cosf) * stabfac
     if beta_bounded:
@@ -52,8 +52,31 @@ def OrbTimeCorr(seed, e, cosf, betapow=1.5, betamin=0.001, betamax=1, Ndust=1000
 
     invNbeta = si.interp1d(Nbeta(np.linspace(betamin*0.8, f_betamax, 20)), np.linspace(betamin*0.8, f_betamax, 20))
     # 0.7991
+    if seed < 0:
+        seed = nr.uniform(0, 1, Ndust)
     return  invNbeta(seed), f_betamax
     #return invNbeta(nr.uniform(0, 1, Ndust)), f_betamax
+
+def OrbTimeCorr_legacy(e, cosf, betapow=1.5, betamin=0.001, betamax=1, Ndust=100000, stabfac = 0.998, beta_bounded=False, a=50, Mstar=1, Tage=float('inf')):
+    dNdbeta = lambda beta: beta**betapow*(1-beta)**1.5*(1-e**2-2*beta*(1+e*cosf))**-1.5
+    f_betamax = (1 - e ** 2) / 2. / (1 + e * cosf) * stabfac
+    if beta_bounded:
+        a *= consts.au2cm
+        mu = consts.G * Mstar
+        half_period_term = pow((mu * Tage ** 2 / (np.pi ** 2)), 1. / 3.)
+        maxbeta_calc = stabfac * (1. - e ** 2) * (a - half_period_term) / (
+                a * (1. - e ** 2) - 2. * half_period_term * (1. + e * cosf))
+        maxbeta_calc = max(0, maxbeta_calc)
+        f_betamax = min(f_betamax, maxbeta_calc)
+    if f_betamax > 1: f_betamax = betamax * stabfac
+    norm = sint.quad(dNdbeta, betamin, f_betamax)[0]
+
+    Nbeta = lambda beta: sint.quad(dNdbeta, betamin, beta)[0]/norm
+    Nbeta = np.vectorize(Nbeta)
+
+    invNbeta = si.interp1d(Nbeta(np.linspace(betamin*0.8, f_betamax, 20)), np.linspace(betamin*0.8, f_betamax, 20))
+    return invNbeta(nr.uniform(0, 1, Ndust))
+
 
 
 def OrbTimeCorr_opt(e, cosf, betapow=1.5, betamin=0.001, betamax=0.5, Ndust=100000, stabfac = 0.998, beta_bounded=False, a=50, Mstar=1, Tage=float('inf')):
@@ -156,7 +179,7 @@ def get_inverse_CDF(e=0, cosf=1, betapow=1.5, betamin=0.001, betamax=1, Ndust=10
     Nbeta = np.vectorize(Nbeta)
     invNbeta = si.interp1d(Nbeta(np.linspace(betamin * 0.8, f_betamax, precision)), np.linspace(betamin * 0.8, f_betamax, precision))
     
-    return invNbeta
+    return invNbeta, f_betamax
 
 
 def get_approx_interp(e, cosf, betapow=1.5, betamin=0.001, betamax=1, Ndust=100000, stabfac = 0.998, beta_bounded=False, a=50, Mstar=1, Tage=float('inf'), precision=100):

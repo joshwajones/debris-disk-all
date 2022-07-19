@@ -11,6 +11,7 @@ import numpy.random as nr
 import scipy.interpolate as sint
 import matplotlib.pyplot as pl
 import pdb
+import time
 
 def GetMeanToTrueAnomalyFunc(e, Npts=100000):
     E = np.linspace(-np.pi, np.pi, Npts)
@@ -19,12 +20,11 @@ def GetMeanToTrueAnomalyFunc(e, Npts=100000):
     return finvM
     
 
-def OutputPosition(e, Npts=100, verbose=False):
+def OutputPosition(e, Npts=100, Nintp=100, verbose=False):
     
-    E = np.linspace(-np.pi, np.pi, Npts)
+    E = np.linspace(-np.pi, np.pi, Nintp)
     M = E - e*np.sin(E)
     finvM = sint.interp1d(M, E) #put this elsewhere for optimization
-
     # calculates the tangent of interpolated true anomalies
     # choosing the mean anomaly uniformly
     tanf = np.sqrt((1+e)/(1-e))*\

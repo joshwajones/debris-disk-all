@@ -171,10 +171,13 @@ class DebrisDisk:
             self.q = Ifree * np.cos(self.B * self.age + gamma) + self.q0
         else:
             efree = nr.uniform(0, self.inputdata["ecoll"], int(self.inputdata["Nparticles"]))
-            Ifree = nr.uniform(
-                np.max((0, self.inputdata["Icent"] * np.pi / 180. - self.inputdata["Icoll"] * np.pi / 180.)), \
-                self.inputdata["Icoll"] * np.pi / 180. + self.inputdata["Icent"] * np.pi / 180.,
-                int(self.inputdata["Nparticles"]))
+            if "fixed_inc" in self.inputdata and self.inputdata["fixed_inc"] == 1:
+                Ifree = self.inputdata["Icoll"] * np.pi / 180
+            else:
+                Ifree = nr.uniform(
+                    np.max((0, self.inputdata["Icent"] * np.pi / 180. - self.inputdata["Icoll"] * np.pi / 180.)), \
+                    self.inputdata["Icoll"] * np.pi / 180. + self.inputdata["Icent"] * np.pi / 180.,
+                    int(self.inputdata["Nparticles"]))
             if self.inputdata["launchstyle"] >= 4: #if parent body orbits should be aligned
                 omega = np.zeros(int(self.inputdata["Nparticles"]))
                 Omega = np.zeros(int(self.inputdata["Nparticles"]))

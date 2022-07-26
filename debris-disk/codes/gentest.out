@@ -1,0 +1,11 @@
+Computing Parent Orbits (single planet)...
+1/1 parent body
+Computing 0th dust grain...
+Dust grains computed.
+Time spent computing matrices:   0.0004749298095703125
+Time spent computing orbital elements and ejecta:   0.0007758140563964844
+Time spent specifically in orb_elements function:     0.00023889541625976562
+Time spent computing betas:   0.07658123970031738
+Time applying radiation pressure formulae:     2.193450927734375e-05
+Total time:  0.07855987548828125
+Betamax:      0.47354063382

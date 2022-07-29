@@ -178,17 +178,25 @@ class DebrisDisk:
                     np.max((0, self.inputdata["Icent"] * np.pi / 180. - self.inputdata["Icoll"] * np.pi / 180.)), \
                     self.inputdata["Icoll"] * np.pi / 180. + self.inputdata["Icent"] * np.pi / 180.,
                     int(self.inputdata["Nparticles"]))
-            if self.inputdata["launchstyle"] >= 4: #if parent body orbits should be aligned
+            if self.inputdata["launchstyle"] >= 4:
                 omega = np.zeros(int(self.inputdata["Nparticles"]))
                 Omega = np.zeros(int(self.inputdata["Nparticles"]))
             else:
                 omega = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nparticles"]))
                 Omega = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nparticles"]))
+            # elif self.inputdata["launchstyle"] == 5:
+            #     omega = np.zeros(int(self.inputdata["Nparticles"]))
+            #     Omega = np.pi/2 * np.ones(int(self.inputdata["Nparticles"]))
+            # elif self.inputdata["launchstyle"] == 6:
+            #     Omega = np.zeros(int(self.inputdata["Nparticles"]))
+            #     omega = np.pi * np.ones(int(self.inputdata["Nparticles"]))
+
+
             self.h = efree * np.sin(omega + Omega) + self.h0
             self.k = efree * np.cos(omega + Omega) + self.k0
             self.p = Ifree * np.sin(Omega) + self.p0
             self.q = Ifree * np.cos(Omega) + self.q0
-            
+
 
     def ComputeParentOrbital(self):
         # Compute orbital parameters of parent bodies
@@ -262,8 +270,11 @@ class DebrisDisk:
             elif self.inputdata["launchstyle"] == 5:
                 # all from quadrature
                 cosfp = np.zeros(Nlaunch)
-                sinfp = np.ones(Nlaunch)
-
+                sinfp = -1 * np.ones(Nlaunch)
+            elif self.inputdata["launchstyle"] == 6:
+                # all at apo
+                cosfp = -1 * np.ones(Nlaunch)
+                sinfp = np.zeros(Nlaunch)
             #initial: orbital elements of dust grains before applying radiation pressure
             self.a_initial = np.array(Nlaunch * [self.a[i]])
             self.e_initial = np.array(Nlaunch * [self.e[i]])
@@ -303,7 +314,9 @@ class DebrisDisk:
                     else:
                         dydx = (radius * cosfp[j] - drdt * sinfp[j]) / (-1 * radius * sinfp[j] + drdt * cosfp[j])
                         velocity_orbplane = [1, dydx, 0]
-                        velocity_orbplane = velocity/np.linalg.norm(velocity_orbplane) * velocity_orbplane
+                        ratio_ = velocity / np.linalg.norm(velocity_orbplane)
+                        #velocity_orbplane = velocity/np.linalg.norm(velocity_orbplane) * velocity_orbplane
+                        velocity_orbplane =  [v * ratio_ for v in velocity_orbplane]
                     velocity_eq = M @ velocity_orbplane
                     coords_orbplane = [radius * cosfp[j], radius * sinfp[j], 0]
                     coords_eq = M @ coords_orbplane

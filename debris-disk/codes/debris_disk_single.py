@@ -188,6 +188,7 @@ class DebrisDisk:
             self.k = efree * np.cos(omega + Omega) + self.k0
             self.p = Ifree * np.sin(Omega) + self.p0
             self.q = Ifree * np.cos(Omega) + self.q0
+            
 
     def ComputeParentOrbital(self):
         # Compute orbital parameters of parent bodies

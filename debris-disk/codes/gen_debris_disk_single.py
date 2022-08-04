@@ -23,10 +23,13 @@ dd.ComputeDustGrains_Optimized()
 dd.OutputParentOrbit("../parentorbit/%s"%response)
 #dd.OutputQbeta("../images/imgrid/400x400/%s"%response)
 #dd.Plot3DOrbit()
+
+
 dd.ComputeBackgroundParentSingle()
 dd.ComputeBackgroundParentOrbital()
 #dd.ComputeBackgroundDustGrains()
-dd.ComputeBackgroundDustGrains_BetaOptimized()
+dd.ComputeBackgroundDustGrains_BetaOptimized2()
+#dd.ComputeBackgroundDustGrains_Optimized()
 
 #dd.Plot_pqhk()
 #dd.Plot3DOrbit()

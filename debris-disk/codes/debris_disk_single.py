@@ -44,12 +44,15 @@ class DebrisDisk:
         self.verbose = False
         self.print_every_x_dust = 0
         self.beta_per_launch = 1
+        self.beta_per_launch_back = 1
         if "verbose" in self.inputdata:
             self.verbose = self.inputdata["verbose"]
             if "print_every_x_dust" in self.inputdata:
                 self.print_every_x_dust = self.inputdata["print_every_x_dust"]
         if "beta_per_launch" in self.inputdata:
             self.beta_per_launch = int(self.inputdata["beta_per_launch"])
+        if "beta_per_launch_back" in self.inputdata:
+            self.beta_per_launch_back = int(self.inputdata["beta_per_launch_back"])
 
     def AddSinglePlanet(self, manual=False, Mp=4., ap=5., ep=0.25, Ip=0., Omegap=0., omegap=0.):
         # Add a planet
@@ -932,6 +935,222 @@ class DebrisDisk:
             self.beta_dust = self.beta_dust[goodi]
         self.SaveValues()
 
+    def ComputeBackgroundDustGrains_Optimized(self, manual=False, beta=0.3, Nlaunch=10):
+        # Compute orbital parameters of launched dust grains
+        # beta = Prad/Pgrav
+        # Nlaunch = launch points per parent body orbit
+        # print("Computing Dust Grain Orbits...")
+        # ct = datetime.datetime.now()
+        # print("current time:-", ct)
+        if "Nlaunchback" not in self.inputdata or "Nback" not in self.inputdata:
+            return
+        print("Computing Background Dust Grain Orbits...")
+        start_time = time.time()
+        if manual:
+            self.beta = beta
+            Nlaunchback = Nlaunchback
+        elif self.inputdata["betadistrb"] == 0:
+            self.beta = self.inputdata["beta"]
+            Nlaunchback = int(self.inputdata["Nlaunchback"])
+            self.beta_dust = np.ones((len(self.h), Nlaunchback)) * self.beta
+        else:
+            Nlaunchback = int(self.inputdata["Nlaunchback"])
+            betapow = self.inputdata["betadistrb"]
+            betamin, betamax = self.inputdata["betamin"], self.inputdata["betamax"]
+            self.beta_dust = np.zeros((len(self.h), Nlaunchback))
+
+        self.a_dust = np.zeros((len(self.h), Nlaunchback))  # len(self.h) is Nback - this is Nback x Nlaunchback array
+        self.e_dust = np.zeros((len(self.h), Nlaunchback))
+        self.I_dust = np.zeros((len(self.h), Nlaunchback))
+        self.Omega_dust = np.zeros((len(self.h), Nlaunchback))
+        self.omega_dust = np.zeros((len(self.h), Nlaunchback))
+
+        lps = np.zeros((len(self.h), Nlaunchback))
+        mu = consts.G * self.Mstar
+        matrix_time = 0
+        ejecta_time = 0
+        beta_calcs_time = 0
+        beta_application_time = 0
+        time_in_func = 0
+        for i in range(len(self.h)):  # for each parent body
+            print("%i/%i background parent body" % (i + 1, len(self.h)))
+            fp = nr.uniform(0, 2 * np.pi, Nlaunchback)  # get random true anomaly for each
+            lps[i] = fp
+            cosfp = np.cos(fp)
+            sinfp = np.sin(fp)
+
+            # initial: orbital elements of dust grains before applying radiation pressure
+            self.a_initial = np.array(Nlaunchback * [self.a[i]])
+            self.e_initial = np.array(Nlaunchback * [self.e[i]])
+            self.I_initial = np.array(Nlaunchback * [self.I[i]])
+            self.Omega_initial = np.array(Nlaunchback * [self.Omega[i]])
+            self.omega_initial = np.array(Nlaunchback * [self.omega[i]])
+            self.cosf_initial = cosfp
+            self.sinf_initial = sinfp
+            self.e_max = 0
+            self.cosf_max = 0
+            start_ejecta = time.time()
+
+            end_ejecta = time.time()
+            ejecta_time += end_ejecta - start_ejecta
+            start_beta_calcs = time.time()
+
+            self.a_dust, self.e_dust, self.I_dust, self.Omega_dust, self.omega_dust, self.beta_dust = \
+                bd.OrbTimeCorr_MidOptimized(a_launch=self.a_initial, e_launch=self.e_initial, I_launch=self.I_initial,
+                                            Omega_launch=self.Omega_initial, omega_launch=self.omega_initial,
+                                            cosf_launch=self.cosf_initial,
+                                            sinf_launch=self.sinf_initial, beta_per_launch=self.beta_per_launch_back)
+            end_beta_calcs = time.time()
+            beta_calcs_time += end_beta_calcs - start_beta_calcs
+
+            uboundi = np.where(self.a_dust[:] < 0)[0]
+            if len(uboundi) > 0 and self.inputdata["betadistrb"] != 0:
+                pdb.set_trace()
+
+        lps = lps.flatten()
+        np.savetxt('launchpoints.txt', lps)
+
+        self.a_dust = self.a_dust.flatten()
+        self.e_dust = self.e_dust.flatten()
+        self.I_dust = self.I_dust.flatten()
+        self.Omega_dust = self.Omega_dust.flatten()
+        self.omega_dust = self.omega_dust.flatten()
+        self.beta_dust = self.beta_dust.flatten()
+
+        uboundi = np.where(self.a_dust < 0)[0]
+        if len(uboundi) == len(self.a_dust): pdb.set_trace()
+        if len(uboundi) > 0:
+            goodi = np.where(self.a_dust > 0)[0]
+            self.a_dust = self.a_dust[goodi]
+            self.e_dust = self.e_dust[goodi]
+            self.I_dust = self.I_dust[goodi]
+            self.Omega_dust = self.Omega_dust[goodi]
+            self.omega_dust = self.omega_dust[goodi]
+            self.beta_dust = self.beta_dust[goodi]
+
+        self.SaveValues()
+
+        print("Dust grains computed.")
+        print("Time spent computing betas:  ", beta_calcs_time)
+        end_time = time.time()
+        print("Total time: ", end_time - start_time)
+        print(len(self.a_dust))
+
+    def ComputeBackgroundDustGrains_BetaOptimized2(self, manual=False, beta=0.3, Nlaunch=10):
+        # Compute orbital parameters of launched dust grains
+        # beta = Prad/Pgrav
+        # Nback: number of parent background orbits
+        # Nlaunchback = launch points per parent body orbit
+        if "Nlaunchback" not in self.inputdata or "Nback" not in self.inputdata:
+            return
+        print("Computing Background Dust Grain Orbits...")
+        start_time = time.time()
+        if manual:
+            self.beta = beta
+            Nlaunchback = Nlaunchback
+        elif self.inputdata["betadistrb"] == 0:
+            self.beta = self.inputdata["beta"]
+            Nlaunchback = int(self.inputdata["Nlaunchback"])
+            self.beta_dust = np.ones((len(self.h), Nlaunchback)) * self.beta
+        else:
+            Nlaunchback = int(self.inputdata["Nlaunchback"])
+            betapow = self.inputdata["betadistrb"]
+            betamin, betamax = self.inputdata["betamin"], self.inputdata["betamax"]
+            self.beta_dust = np.zeros((len(self.h), Nlaunchback))
+
+        self.a_dust = np.zeros((len(self.h), Nlaunchback))  # len(self.h) is Nback - this is Nback x Nlaunchback array
+        self.e_dust = np.zeros((len(self.h), Nlaunchback))
+        self.I_dust = np.zeros((len(self.h), Nlaunchback))
+        self.Omega_dust = np.zeros((len(self.h), Nlaunchback))
+        self.omega_dust = np.zeros((len(self.h), Nlaunchback))
+
+        lps = np.zeros((len(self.h), Nlaunchback))
+        mu = consts.G * self.Mstar
+        matrix_time = 0
+        ejecta_time = 0
+        beta_calcs_time = 0
+        beta_application_time = 0
+        time_in_func = 0
+        self.e_max=  0.02
+        self.cosf_max = 1
+        start_beta_calcs = time.time()
+        # inverseCDF, approx_betamax = bd.get_inverse_CDF(self.e_max, self.cosf_max, betapow=betapow,
+        #                                                 betamin=betamin,
+        #                                                 betamax=betamax, Ndust=1,
+        #                                                 beta_bounded=self.beta_bounded,
+        #                                                 a=np.average(self.a), Mstar=self.Mstar, Tage=self.age,
+        #                                                 precision=1000)
+        end_beta_calcs = time.time()
+        beta_calcs_time += end_beta_calcs - start_beta_calcs
+        for i in range(len(self.h)):  # for each parent body
+            print("%i/%i background parent body" % (i + 1, len(self.h)))
+            fp = nr.uniform(0, 2 * np.pi, Nlaunchback)  # get random true anomaly for each
+            lps[i] = fp
+            cosfp = np.cos(fp)
+            sinfp = np.sin(fp)
+
+
+            self.e_max = self.e[i]
+            self.cosf_max = np.max(cosfp)
+
+            start_beta_calcs = time.time()
+            inverseCDF, approx_betamax = bd.get_inverse_CDF(self.e_max, self.cosf_max, betapow=betapow,
+                                                            betamin=betamin,
+                                                            betamax=betamax, Ndust=1,
+                                                            beta_bounded=self.beta_bounded,
+                                                            a=self.a[i], Mstar=self.Mstar, Tage=self.age,
+                                                            precision=500)
+            self.beta_dust[i] = bd.OrbTimeCorr_Vectorized(inverseCDF, Nlaunchback)
+            end_beta_calcs = time.time()
+            beta_calcs_time += end_beta_calcs - start_beta_calcs
+
+            start_beta_application_time = time.time()
+            self.a_dust[i, :] = (1 - self.beta_dust[i, :]) * self.a[i] * (1 - self.e[i] ** 2) / \
+                                (1 - self.e[i] ** 2 - 2 * self.beta_dust[i, :] * (1 + self.e[i] * cosfp))
+            self.e_dust[i, :] = np.sqrt(
+                self.e[i] ** 2 + 2 * self.beta_dust[i, :] * self.e[i] * cosfp + self.beta_dust[i, :] ** 2) / (
+                                        1 - self.beta_dust[i, :])
+            self.omega_dust[i, :] = self.omega[i] + np.arctan2(self.beta_dust[i, :] * sinfp,
+                                                               self.e[i] + self.beta_dust[i, :] * cosfp)
+
+            self.I_dust[i, :] = self.I[i]
+            self.Omega_dust[i, :] = self.Omega[i]
+
+            uboundi = np.where(self.a_dust[i, :] < 0)[0]
+            if len(uboundi) > 0 and self.inputdata["betadistrb"] != 0:
+                pdb.set_trace()
+            end_beta_application_time = time.time()
+            beta_application_time += end_beta_application_time - start_beta_application_time
+
+        lps = lps.flatten()
+        np.savetxt('launchpoints.txt', lps)
+
+        self.a_dust = self.a_dust.flatten()
+        self.e_dust = self.e_dust.flatten()
+        self.I_dust = self.I_dust.flatten()
+        self.Omega_dust = self.Omega_dust.flatten()
+        self.omega_dust = self.omega_dust.flatten()
+        self.beta_dust = self.beta_dust.flatten()
+
+        uboundi = np.where(self.a_dust < 0)[0]
+        if len(uboundi) == len(self.a_dust): pdb.set_trace()
+        if len(uboundi) > 0:
+            goodi = np.where(self.a_dust > 0)[0]
+            self.a_dust = self.a_dust[goodi]
+            self.e_dust = self.e_dust[goodi]
+            self.I_dust = self.I_dust[goodi]
+            self.Omega_dust = self.Omega_dust[goodi]
+            self.omega_dust = self.omega_dust[goodi]
+            self.beta_dust = self.beta_dust[goodi]
+
+        self.SaveValues()
+        print("Dust grains computed.")
+        print("Time spent computing matrices:  ", matrix_time)
+        print("Time spent computing betas:  ", beta_calcs_time)
+        print("Time applying radiation pressure formulae:    ", beta_application_time)
+        end_time = time.time()
+        print("Total time: ", end_time - start_time)
+        #print("Betamax:     ", approx_betamax)
 
 
     def ComputeBackgroundDustGrains_BetaOptimized(self, manual=False, beta=0.3, Nlaunch=10):

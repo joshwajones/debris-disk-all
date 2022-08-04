@@ -18,6 +18,7 @@ rand_number = 0.7991
 
 def OrbTimeCorr_MidOptimized(a_launch, e_launch, I_launch, Omega_launch, omega_launch, cosf_launch, sinf_launch,
                              beta_per_launch, n_beta_grid=50, betapow=1.5, betamin=0.001, stabfac=0.997):
+    stabfac=0.9999
     betamax = (1. - e_launch ** 2) / (2. * (1. + e_launch * cosf_launch))
     betamax = stabfac * betamax
     Nlaunch = len(a_launch)

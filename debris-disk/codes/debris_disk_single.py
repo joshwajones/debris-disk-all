@@ -200,7 +200,6 @@ class DebrisDisk:
             self.p = Ifree * np.sin(Omega) + self.p0
             self.q = Ifree * np.cos(Omega) + self.q0
 
-
     def ComputeParentOrbital(self):
         # Compute orbital parameters of parent bodies
         self.Omega = np.arctan2(self.p, self.q)
@@ -371,6 +370,7 @@ class DebrisDisk:
             self.beta_dust = self.beta_dust[goodi]
 
         self.SaveValues()
+        
         print("Dust grains computed.")
         print("Time spent computing matrices:  ", matrix_time)
         print("Time spent computing orbital elements and ejecta:  ", ejecta_time)
@@ -378,6 +378,10 @@ class DebrisDisk:
         print("Time spent computing betas:  ", beta_calcs_time)
         end_time = time.time()
         print("Total time: ", end_time - start_time)
+        print(len(self.a_dust))
+        
+        
+    
 
 
 
@@ -388,6 +392,7 @@ class DebrisDisk:
         # print("Computing Dust Grain Orbits...")
         # ct = datetime.datetime.now()
         # print("current time:-", ct)
+
         start_time = time.time()
         if manual:
             self.beta = beta
@@ -565,6 +570,8 @@ class DebrisDisk:
             self.beta_dust = self.beta_dust[goodi]
 
         self.SaveValues()
+
+
         print("Dust grains computed.")
         print("Time spent computing matrices:  ", matrix_time)
         print("Time spent computing orbital elements and ejecta:  ", ejecta_time)
@@ -1057,6 +1064,10 @@ class DebrisDisk:
                                                    self.q0, self.h0, self.k0, self.a)))
         np.savetxt(outfile + "_orbit.txt", list(zip(self.a, self.e, self.I, self.Omega, self.omega)))
         np.savetxt(outfile + "_freq.txt", list(zip(self.A, self.Aj, self.B, self.Bj)))
+    def OutputQbeta(self, outfile):
+        Qmax = self.a_dust * (1 + self.e_dust)
+        Qbeta = np.array([self.beta_dust, Qmax])
+        np.savetxt(outfile + "_qbeta.txt", list(Qbeta))
 
     def OutputDustOrbit(self, outfile):
         if self.inputdata["betadistrb"] == 0:

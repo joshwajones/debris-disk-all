@@ -49,7 +49,7 @@ class DebrisDisk:
             if "print_every_x_dust" in self.inputdata:
                 self.print_every_x_dust = self.inputdata["print_every_x_dust"]
         if "beta_per_launch" in self.inputdata:
-            self.beta_per_launch = self.inputdata["beta_per_launch"]
+            self.beta_per_launch = int(self.inputdata["beta_per_launch"])
 
     def AddSinglePlanet(self, manual=False, Mp=4., ap=5., ep=0.25, Ip=0., Omegap=0., omegap=0.):
         # Add a planet
@@ -300,8 +300,7 @@ class DebrisDisk:
 
                 end_matrices = time.time()
                 matrix_time += end_matrices - start_matrices
-
-                for j in range(len(self.a_dust[i])): #for each dust particle launched from this parent body
+                for j in range(len(self.a_dust[i])): #for each dust particle launched from this parent body, l
                     if self.verbose and j % self.print_every_x_dust == 0:
                         print(f"Computing {j}th dust grain...")
 
@@ -339,14 +338,14 @@ class DebrisDisk:
             start_beta_calcs = time.time()
             
             self.a_dust, self.e_dust, self.I_dust, self.Omega_dust, self.omega_dust, self.beta_dust = \
-                bd.OrbTimeCorr_MidOptimized(a_launch=self.a_initial, e_launch=self.e_initial, cosf_launch=self.cosf_initial, 
+                bd.OrbTimeCorr_MidOptimized(a_launch=self.a_initial, e_launch=self.e_initial, I_launch=self.I_initial,
+                                            Omega_launch=self.Omega_initial, omega_launch=self.omega_initial, cosf_launch=self.cosf_initial,
                                             sinf_launch=self.sinf_initial, beta_per_launch=self.beta_per_launch)
-
             end_beta_calcs = time.time()
             beta_calcs_time += end_beta_calcs - start_beta_calcs
             
     
-            uboundi = np.where(self.a_dust[i, :] < 0)[0]
+            uboundi = np.where(self.a_dust[:] < 0)[0]
             if len(uboundi) > 0 and self.inputdata["betadistrb"] != 0:
                 pdb.set_trace()
 
@@ -379,7 +378,6 @@ class DebrisDisk:
         print("Time spent computing betas:  ", beta_calcs_time)
         end_time = time.time()
         print("Total time: ", end_time - start_time)
-        print("Betamax:     ", approx_betamax)
 
 
 

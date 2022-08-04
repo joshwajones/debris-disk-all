@@ -18,7 +18,7 @@ dd.AddSinglePlanet()
 dd.ComputeParentSingle(Nparticles=1, coll_in_middle=True)
 dd.ComputeParentOrbital()
 #dd.ComputeDustGrains()
-dd.ComputeDustGrains_Opimized()
+dd.ComputeDustGrains_Optimized()
 dd.OutputParentOrbit("../parentorbit/%s"%response)
 #dd.Plot3DOrbit()
 

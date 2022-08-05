@@ -25,11 +25,12 @@ dd.OutputParentOrbit("../parentorbit/%s"%response)
 #dd.Plot3DOrbit()
 
 
-dd.ComputeBackgroundParentSingle()
+dd.ComputeBackgroundParentSingle_Optimized()
+#dd.ComputeBackgroundParentSingle()
 dd.ComputeBackgroundParentOrbital()
 #dd.ComputeBackgroundDustGrains()
-dd.ComputeBackgroundDustGrains_BetaOptimized2()
-#dd.ComputeBackgroundDustGrains_Optimized()
+#dd.ComputeBackgroundDustGrains_BetaOptimized2()
+dd.ComputeBackgroundDustGrains_Optimized()
 
 #dd.Plot_pqhk()
 #dd.Plot3DOrbit()

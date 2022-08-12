@@ -994,6 +994,7 @@ class DebrisDisk:
         beta_calcs_time = 0
         beta_application_time = 0
         time_in_func = 0
+
         
         
 

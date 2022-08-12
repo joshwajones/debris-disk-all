@@ -292,6 +292,11 @@ class DebrisDisk:
                 # all at apo
                 cosfp = -1 * np.ones(Nlaunch)
                 sinfp = np.zeros(Nlaunch)
+            elif self.inputdata["launchstyle"] == 7:
+                # variable launch angle
+                theta = self.inputdata["launch_angle"] * np.pi/180
+                cosfp = np.cos(theta) * np.ones(Nlaunch)
+                sinfp = np.sin(theta) * np.ones(Nlaunch)
             #initial: orbital elements of dust grains before applying radiation pressure
             self.a_initial = np.array(Nlaunch * [self.a[i]])
             self.e_initial = np.array(Nlaunch * [self.e[i]])
@@ -320,18 +325,45 @@ class DebrisDisk:
                         print(f"Computing {j}th dust grain...")
 
                     radius = self.a[i] * (1 - self.e[i] ** 2) / (1 + self.e[i] * cosfp[j])
+
+
                     velocity = np.sqrt(consts.G * self.Mstar * (2 / radius - 1 / self.a[i]))
-                    drdt = self.a[i] * (1 - self.e[i] ** 2) * self.e[i] * sinfp[j] / ((1 + self.e[i] * cosfp[j]) ** 2)
-                    if abs(-1 * radius * sinfp[j] + drdt * cosfp[j]) < 1e-40:
-                        if cosfp[j] > 0:
-                            velocity_orbplane = [0, velocity, 0]
-                        else:
-                            velocity_orbplane = [0, -velocity, 0]
+
+
+                    # drdt = self.a[i] * (1 - self.e[i] ** 2) * self.e[i] * sinfp[j] / ((1 + self.e[i] * cosfp[j]) ** 2)
+                    # if abs(-1 * radius * sinfp[j] + drdt * cosfp[j]) < 1e-40:
+                    #     if cosfp[j] > 0:
+                    #         velocity_orbplane = [0, velocity, 0]
+                    #     else:
+                    #         velocity_orbplane = [0, -velocity, 0]
+                    # else:
+                    #     dydx = (radius * cosfp[j] - drdt * sinfp[j]) / (-1 * radius * sinfp[j] + drdt * cosfp[j])
+                    #     velocity_orbplane = [1, dydx, 0]
+                    #     ratio_ = velocity / np.linalg.norm(velocity_orbplane)
+                    #     velocity_orbplane = [v * ratio_ for v in velocity_orbplane]
+                    #
+                    # old_orbplane = np.array(list(velocity_orbplane))
+                    if abs(sinfp[j]) < 1e-40:
+                        velocity_orbplane = [0, cosfp[j] * velocity, 0]
                     else:
-                        dydx = (radius * cosfp[j] - drdt * sinfp[j]) / (-1 * radius * sinfp[j] + drdt * cosfp[j])
+                        dydx = - (cosfp[j] + self.e[i])/(sinfp[j])
                         velocity_orbplane = [1, dydx, 0]
                         ratio_ = velocity / np.linalg.norm(velocity_orbplane)
                         velocity_orbplane = [v * ratio_ for v in velocity_orbplane]
+                        if cosfp[j] < 0: 
+                            velocity_orbplane = [-1 * v for v in velocity_orbplane]
+
+                    # print(old_orbplane)
+                    # print(velocity_orbplane)
+                    # print(velocity_orbplane/np.linalg.norm(velocity_orbplane))
+                    # pdb.set_trace()
+                    
+                    
+                    
+
+
+
+
                     velocity_eq = M @ velocity_orbplane
                     coords_orbplane = [radius * cosfp[j], radius * sinfp[j], 0]
                     coords_eq = M @ coords_orbplane

@@ -96,8 +96,11 @@ def OrbTimeCorr_Background_ApplyBeta(invNbeta, a_launch, e_launch, I_launch, Ome
     return a_dust, e_dust, I_dust, Omega_dust, omega_dust, beta_dust 
 
 def OrbTimeCorr_MidOptimized(a_launch, e_launch, I_launch, Omega_launch, omega_launch, cosf_launch, sinf_launch,
-                             beta_per_launch, n_beta_grid=50, betapow=1.5, betamin=0.001, stabfac=0.997):
+                             beta_per_launch, n_beta_grid=50, betapow=1.5, betamin=0.001, stabfac=0.997, beta_limit=1):
     betamax = (1. - e_launch ** 2) / (2. * (1. + e_launch * cosf_launch))
+    for i in range(len(betamax)): 
+        if betamax[i] > beta_limit:
+            betamax[i] = beta_limit
     betamax = stabfac * betamax
     Nlaunch = len(a_launch)
     total_dust_particles = Nlaunch * beta_per_launch

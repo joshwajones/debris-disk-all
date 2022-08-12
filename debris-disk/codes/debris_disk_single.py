@@ -387,7 +387,7 @@ class DebrisDisk:
             self.a_dust, self.e_dust, self.I_dust, self.Omega_dust, self.omega_dust, self.beta_dust = \
                 bd.OrbTimeCorr_MidOptimized(a_launch=self.a_initial, e_launch=self.e_initial, I_launch=self.I_initial,
                                             Omega_launch=self.Omega_initial, omega_launch=self.omega_initial, cosf_launch=self.cosf_initial,
-                                            sinf_launch=self.sinf_initial, beta_per_launch=self.beta_per_launch, stabfac=self.stabfac)
+                                            sinf_launch=self.sinf_initial, beta_per_launch=self.beta_per_launch, stabfac=self.stabfac, beta_limit=betamax)
             end_beta_calcs = time.time()
             beta_calcs_time += end_beta_calcs - start_beta_calcs
             

@@ -358,16 +358,16 @@ class DebrisDisk:
                         velocity_orbplane = [1, dydx, 0]
                         ratio_ = velocity / np.linalg.norm(velocity_orbplane)
                         velocity_orbplane = [v * ratio_ for v in velocity_orbplane]
-                        if cosfp[j] < 0: 
+                        if cosfp[j] < 0:
                             velocity_orbplane = [-1 * v for v in velocity_orbplane]
 
                     # print(old_orbplane)
                     # print(velocity_orbplane)
                     # print(velocity_orbplane/np.linalg.norm(velocity_orbplane))
                     # pdb.set_trace()
-                    
-                    
-                    
+
+
+
 
 
 
@@ -391,15 +391,15 @@ class DebrisDisk:
             end_ejecta = time.time()
             ejecta_time += end_ejecta - start_ejecta
             start_beta_calcs = time.time()
-            
+
             self.a_dust, self.e_dust, self.I_dust, self.Omega_dust, self.omega_dust, self.beta_dust = \
                 bd.OrbTimeCorr_MidOptimized(a_launch=self.a_initial, e_launch=self.e_initial, I_launch=self.I_initial,
                                             Omega_launch=self.Omega_initial, omega_launch=self.omega_initial, cosf_launch=self.cosf_initial,
                                             sinf_launch=self.sinf_initial, beta_per_launch=self.beta_per_launch, stabfac=self.stabfac, beta_limit=betamax)
             end_beta_calcs = time.time()
             beta_calcs_time += end_beta_calcs - start_beta_calcs
-            
-    
+
+
             uboundi = np.where(self.a_dust[:] < 0)[0]
             if len(uboundi) > 0 and self.inputdata["betadistrb"] != 0:
                 pdb.set_trace()
@@ -426,7 +426,7 @@ class DebrisDisk:
             self.beta_dust = self.beta_dust[goodi]
 
         self.SaveValues()
-        
+
         print("Dust grains computed.")
         print("Time spent computing matrices:  ", matrix_time)
         print("Time spent computing orbital elements and ejecta:  ", ejecta_time)
@@ -435,9 +435,9 @@ class DebrisDisk:
         end_time = time.time()
         print("Total time: ", end_time - start_time)
         print(len(self.a_dust))
-        
-        
-    
+
+
+
 
 
 
@@ -517,11 +517,11 @@ class DebrisDisk:
             self.omega_initial = np.array(Nlaunch * [self.omega[i]])
             self.cosf_initial = cosfp
             self.sinf_initial = sinfp
-            self.e_max = 0 
+            self.e_max = 0
             self.cosf_max = 0
             start_ejecta = time.time()
 
-            #If ejected: calculate initial orbits after ejection, before radiation 
+            #If ejected: calculate initial orbits after ejection, before radiation
             if "ejected" in self.inputdata and self.inputdata["ejected"] == 1: #including ejecta velocity
                 start_matrices = time.time()
                 dv_ratio = self.inputdata["dv_ratio"]
@@ -567,7 +567,7 @@ class DebrisDisk:
                     self.cosf_initial[j] = np.cos(f)
                     self.e_max = max(self.e_max, self.e_initial[j])
                     self.cosf_max = max(self.cosf_max, self.cosf_initial[j])
-            else: 
+            else:
                 self.e_max = self.e[i]
                 self.cosf_max = np.max(cosfp)
             end_ejecta = time.time()
@@ -857,7 +857,7 @@ class DebrisDisk:
 
                 self.I_dust[i, :] = self.I[i]
                 self.Omega_dust[i, :] = self.Omega[i]
-            uboundi = np.where(self.a_dust[i, :] < 0)[0] 
+            uboundi = np.where(self.a_dust[i, :] < 0)[0]
             # if len(uboundi) > 0 and self.inputdata["betadistrb"] != 0:
             #     pdb.set_trace()
         # print("finished with betas and calculations")
@@ -1035,10 +1035,10 @@ class DebrisDisk:
         beta_application_time = 0
         time_in_func = 0
 
-        
-        
 
-        for i in range(len(self.h)):  # for each parent body (Nback) 
+
+
+        for i in range(len(self.h)):  # for each parent body (Nback)
             print("%i/%i background parent body" % (i + 1, len(self.h)))
             fp = list(self.f_vals)
             #fp = nr.uniform(0, 2 * np.pi, Nlaunchback)  # get random true anomaly for each
@@ -1050,11 +1050,7 @@ class DebrisDisk:
             for j in range(len(fp)): #for each launch point
                 # launch beta_per_launch_back points
                 for k in range(self.beta_per_launch_back):
-                    try:
-                        beta = self.inv_map[round(self.e[i],5)][round(cosfp[j], 5)](nr.uniform(0, 1))
-                    except:
-                        print(self.inv_map.keys())
-                        print(self.e[i])
+                    beta = self.inv_map[round(self.e[i],5)][round(cosfp[j], 5)](nr.uniform(0, 1))
                     self.a_dust[i][j][k] = (1 - beta) * self.a[i] * (1 - self.e[i] ** 2) / (
                             1 - self.e[i] ** 2 - 2 * beta * (1 + self.e[i] * cosfp[j]))
                     self.omega_dust[i][j][k] = self.omega[i] + np.arctan2(beta * sinfp[j],
@@ -1515,13 +1511,19 @@ class DebrisDisk:
             self.q = Ifree * np.cos(self.B * self.age + gamma) + self.q0
         else:
             #num_f should be Nlaunchback? change parameters
-            e_vals, f_vals, inv_map = bd.OrbTimeCorr_MidOptimized_Background(num_e=self.num_e, max_e=self.inputdata["e0"], num_f=self.Nlaunchback,
-                                                                          n_beta_grid=50, betapow=1.5, betamin=0.001, stabfac=self.stabfac_back)
 
-            self.e_vals = e_vals
-            self.f_vals = f_vals
-            self.inv_map = inv_map
-
+            
+            
+            # e_vals, f_vals, inv_map = bd.OrbTimeCorr_MidOptimized_Background(num_e=self.num_e,
+            #                                                                  max_e=self.inputdata["e0"],
+            #                                                                  num_f=self.Nlaunchback,
+            #                                                                  n_beta_grid=50, betapow=1.5, betamin=0.001,
+            #                                                                  stabfac=self.stabfac_back)
+            # 
+            # self.e_vals = e_vals
+            # self.f_vals = f_vals
+            # self.inv_map = inv_map
+            e_vals = np.linspace(0, self.inputdata["e0"], self.num_e)
             efree = np.zeros(int(self.inputdata["Nback"]))
             for i in range(len(efree)):
                 e = e_vals[np.random.randint(0, len(e_vals))]
@@ -1645,7 +1647,24 @@ class DebrisDisk:
         pomega = np.arctan2(self.h, self.k)
         self.omega = pomega - self.Omega
         self.I = np.sqrt(self.p ** 2 + self.q ** 2)
-        self.e = np.sqrt(self.h ** 2 + self.k ** 2) 
+        self.e = np.sqrt(self.h ** 2 + self.k ** 2)
+
+    def ComputeBackgroundParentOrbital_Optimized(self):
+        # Compute orbital parameters of parent bodies
+        self.Omega = np.arctan2(self.p, self.q)
+        pomega = np.arctan2(self.h, self.k)
+        self.omega = pomega - self.Omega
+        self.I = np.sqrt(self.p ** 2 + self.q ** 2)
+        self.e = np.sqrt(self.h ** 2 + self.k ** 2)
+        e_vals, f_vals, inv_map = bd.OrbTimeCorr_MidOptimized_Background_2(e_set=set(self.e),
+                                                                         num_f=self.Nlaunchback,
+                                                                         n_beta_grid=50, betapow=1.5, betamin=0.001,
+                                                                         stabfac=self.stabfac_back)
+
+        self.e_vals = e_vals
+        self.f_vals = f_vals
+        self.inv_map = inv_map
+        
 
 
     def get_orbital_elements(self, r0, v, dv, mu, eps):

@@ -16,6 +16,45 @@ import pdb
 
 rand_number = 0.7991
 
+def OrbTimeCorr_MidOptimized_Background_2(e_set, num_f=10, n_beta_grid=50, betapow=1.5, betamin=0.001, stabfac=0.997):
+
+    #return inverse CDF for e, cosf combo
+    #hashmap: e_val to list of cosf values
+
+    e_vals = e_set
+    cosf = np.linspace(-1, 1, num_f)
+    f_vals = np.arccos(cosf)
+    for i in range(len(f_vals)):
+        if nr.uniform(0, 1) > 0.5:
+            f_vals[i] = 2 * np.pi - f_vals[i]
+    cosf = np.cos(f_vals)
+    how_close = 1.e-3  # how fractionally close the SECOND-TO-LAST beta grid point comes to betamax_scalar
+    map = {}
+    #array: idx to tuple of e_val, array
+    for e_launch in e_vals:
+        map[round(e_launch, 5)] = {}
+        for cosf_launch in cosf:
+            betamax = (1. - e_launch ** 2) / (2. * (1. + e_launch * cosf_launch))
+            betamax = stabfac * betamax
+            dNdbeta = lambda beta: beta ** betapow * (1 - beta) ** 1.5 * (
+                    1 - e_launch ** 2 - 2 * beta * (1 + e_launch * cosf_launch)) ** -1.5
+
+            epsmax = np.log10(betamax - betamin)
+            epsmin = np.log10(how_close * betamax)
+            eps = np.linspace(epsmax, epsmin, n_beta_grid - 1)
+            beta = betamax - 10. ** eps
+            beta = np.append(beta, betamax)
+
+            norm = sint.quad(dNdbeta, betamin, betamax)[0]
+            Nbeta = lambda beta: sint.quad(dNdbeta, betamin, beta)[0] / norm
+            Nbeta = np.vectorize(Nbeta)
+            invNbeta = si.interp1d(Nbeta(beta), beta)
+            map[round(e_launch,5)][round(cosf_launch,5)] = invNbeta
+    # print()
+    # print(e_vals)
+    # print(cosf)
+    return e_vals, f_vals, map
+
 def OrbTimeCorr_MidOptimized_Background(num_e=10, max_e=0.2, num_f=10, n_beta_grid=50, betapow=1.5, betamin=0.001, stabfac=0.997):
 
     #return inverse CDF for e, cosf combo
@@ -98,7 +137,7 @@ def OrbTimeCorr_Background_ApplyBeta(invNbeta, a_launch, e_launch, I_launch, Ome
 def OrbTimeCorr_MidOptimized(a_launch, e_launch, I_launch, Omega_launch, omega_launch, cosf_launch, sinf_launch,
                              beta_per_launch, n_beta_grid=50, betapow=1.5, betamin=0.001, stabfac=0.997, beta_limit=1):
     betamax = (1. - e_launch ** 2) / (2. * (1. + e_launch * cosf_launch))
-    for i in range(len(betamax)): 
+    for i in range(len(betamax)):
         if betamax[i] > beta_limit:
             betamax[i] = beta_limit
     betamax = stabfac * betamax
@@ -145,18 +184,18 @@ def OrbTimeCorr_MidOptimized(a_launch, e_launch, I_launch, Omega_launch, omega_l
         I_dust[beg:end] = I_launch[j]
         Omega_dust[beg:end] = Omega_launch[j]
         beta_dust[beg:end] = beta_segment
-    return a_dust, e_dust, I_dust, Omega_dust, omega_dust, beta_dust 
+    return a_dust, e_dust, I_dust, Omega_dust, omega_dust, beta_dust
 
 
 
- 
+
 def Donhanyi(e, cosf, betapow=1.5, betamin=0.001, betamax=1, Ndust=100000, beta_bounded=False, a=50, Mstar=1, Tage=float('inf')):
     if beta_bounded:
         a *= consts.au2cm
         mu = consts.G * Mstar
         half_period_term = pow((mu * Tage ** 2 / (np.pi ** 2)), 1./3.)
         f_betamax = (1. - e ** 2) * (a - half_period_term)/(a * (1. - e ** 2) - 2. * half_period_term * (1. + e * cosf))
-    else: 
+    else:
         f_betamax = (1-e**2)/2./(1+e*cosf)
     if f_betamax > 1: f_betamax = betamax
     Pmax = (f_betamax**(1+betapow)-betamin**(1+betapow))/(betamax**(1+betapow)-betamin**(1+betapow))
@@ -178,7 +217,7 @@ def OrbTimeCorr(seed=-1, e=0, cosf=0, betapow=1.5, betamin=0.001, betamax=1, Ndu
         maxbeta_calc = max(0, maxbeta_calc)
         f_betamax = min(f_betamax, maxbeta_calc)
     if f_betamax > 1: f_betamax = betamax*stabfac
-    
+
     norm = sint.quad(dNdbeta, betamin, f_betamax)[0]
 
     Nbeta = lambda beta: sint.quad(dNdbeta, betamin, beta)[0]/norm
@@ -312,7 +351,7 @@ def get_inverse_CDF(e=0, cosf=1, betapow=1.5, betamin=0.001, betamax=1, Ndust=10
     Nbeta = lambda beta: sint.quad(dNdbeta, betamin, beta)[0]/norm
     Nbeta = np.vectorize(Nbeta)
     invNbeta = si.interp1d(Nbeta(np.linspace(betamin * 0.8, f_betamax, precision)), np.linspace(betamin * 0.8, f_betamax, precision))
-    
+
     return invNbeta, f_betamax
 
 
@@ -344,7 +383,7 @@ def get_approx_interp(e, cosf, betapow=1.5, betamin=0.001, betamax=1, Ndust=1000
                 a * (1. - e ** 2) - 2. * half_period_term * (1. + e * cosf))
         maxbeta_calc = max(maxbeta_calc, 0)
         f_betamax = min(f_betamax, maxbeta_calc)
-    if f_betamax > betamax: 
+    if f_betamax > betamax:
         f_betamax = stabfac * betamax
     norm = sint.quad(dNdbeta, betamin, f_betamax)[0]
     Nbeta = lambda beta: sint.quad(dNdbeta, betamin, beta)[0]/norm
@@ -387,7 +426,7 @@ def OrbTimeCorr_opt_approx(seed, inverseCDF, f_betamax_approximate, e, cosf, bet
 
 def OrbTimeCorr_opt_approx(seed, inverseCDF, f_betamax_approximate, e, cosf, betapow=1.5, betamin=0.001, betamax=1, Ndust=100000, stabfac=0.998,
                           beta_bounded=False, a=50, Mstar=1, Tage=float('inf'), idx = 0):
-    
+
     f_betamax = (1 - e ** 2) / 2. / (1 + e * cosf) * stabfac
     if beta_bounded:
         a *= consts.au2cm
@@ -396,7 +435,7 @@ def OrbTimeCorr_opt_approx(seed, inverseCDF, f_betamax_approximate, e, cosf, bet
         f_betamax = stabfac * (1. - e ** 2) * (a - half_period_term) / (
                 a * (1. - e ** 2) - 2. * half_period_term * (1. + e * cosf))
     if f_betamax > 1: f_betamax = betamax * stabfac
-    
+
     #beta = inverseCDF(nr.uniform(0, 1, Ndust))
     beta = inverseCDF(seed)
     # exceeds_maxbeta = np.where(beta > f_betamax)
@@ -436,7 +475,7 @@ def OrbTimeCorr_optimized(inverseCDF, e, cosf, betapow=1.5, betamin=0.001, betam
                     a * (1. - e ** 2) - 2. * half_period_term * (1. + e * cosf))
     else:
         f_betaprox = (1 - e ** 2) / 2. / (1 + e * cosf) * stabfac
-    
+
 
     norm = sint.quad(dNdbeta, betamin, f_betamax)[0]
     normprox = sint.quad(dNdbeta2, betamin, f_betaprox)[0]
@@ -490,6 +529,6 @@ def OrbTimeCorrCirc(betapow=1.5, betamin=0.001, Ndust=100000, stabfac = 0.998, b
     Nbeta = np.vectorize(Nbeta)
 
     invNbeta = si.interp1d(Nbeta(np.linspace(betamin*0.8, f_betamax, 20)), np.linspace(betamin*0.8, f_betamax, 20))
-    
+
     return invNbeta(nr.uniform(0, 1, Ndust))
 

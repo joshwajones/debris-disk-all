@@ -28,7 +28,7 @@ dd.OutputParentOrbit("../parentorbit/%s"%response)
 
 dd.ComputeBackgroundParentSingle_Optimized()
 #dd.ComputeBackgroundParentSingle()
-dd.ComputeBackgroundParentOrbital()
+dd.ComputeBackgroundParentOrbital_Optimized()
 #dd.ComputeBackgroundDustGrains()
 #dd.ComputeBackgroundDustGrains_BetaOptimized2()
 dd.ComputeBackgroundDustGrains_Optimized()

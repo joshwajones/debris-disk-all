@@ -117,6 +117,7 @@ class DebrisDisk:
             self.ecoll = ecoll
             self.Omega0 = Omega0
             self.omega0 = omega0
+
         else:
             #if fix_a:
             if fix_a:
@@ -197,18 +198,12 @@ class DebrisDisk:
                     np.max((0, self.inputdata["Icent"] * np.pi / 180. - self.inputdata["Icoll"] * np.pi / 180.)), \
                     self.inputdata["Icoll"] * np.pi / 180. + self.inputdata["Icent"] * np.pi / 180.,
                     int(self.inputdata["Nparticles"]))
-            if self.inputdata["launchstyle"] >= 4:
+            if self.inputdata["launchstyle"] == 4:
                 omega = np.zeros(int(self.inputdata["Nparticles"]))
                 Omega = np.zeros(int(self.inputdata["Nparticles"]))
             else:
                 omega = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nparticles"]))
                 Omega = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nparticles"]))
-            # elif self.inputdata["launchstyle"] == 5:
-            #     omega = np.zeros(int(self.inputdata["Nparticles"]))
-            #     Omega = np.pi/2 * np.ones(int(self.inputdata["Nparticles"]))
-            # elif self.inputdata["launchstyle"] == 6:
-            #     Omega = np.zeros(int(self.inputdata["Nparticles"]))
-            #     omega = np.pi * np.ones(int(self.inputdata["Nparticles"]))
 
 
             self.h = efree * np.sin(omega + Omega) + self.h0
@@ -218,11 +213,24 @@ class DebrisDisk:
 
     def ComputeParentOrbital(self):
         # Compute orbital parameters of parent bodies
-        self.Omega = np.arctan2(self.p, self.q)
-        pomega = np.arctan2(self.h, self.k)
-        self.omega = pomega - self.Omega
-        self.I = np.sqrt(self.p ** 2 + self.q ** 2)
         self.e = np.sqrt(self.h ** 2 + self.k ** 2)
+        self.I = np.sqrt(self.p ** 2 + self.q ** 2)
+        if self.inputdata["launchstyle"] == 7:
+            R = self.inputdata["radius"]
+            self.e = np.array([self.inputdata["ep"]])
+            e = self.e
+            f = self.inputdata["launch_angle"] * np.pi / 180
+            self.a = R*(1.+e*np.cos(f))/(1.-e**2)
+            self.Omega = np.array([0.0])
+            self.omega = np.array([0.0]) - self.Omega - f
+        else:
+            self.Omega = np.arctan2(self.p, self.q)
+            pomega = np.arctan2(self.h, self.k)
+            self.omega = pomega - self.Omega
+        print(self.e, self.I, self.a, self.Omega, self.omega, f)
+
+
+
 
 
     def ComputeDustGrains_Optimized(self, manual=False, beta=0.3, Nlaunch=10):
@@ -1042,8 +1050,11 @@ class DebrisDisk:
             for j in range(len(fp)): #for each launch point
                 # launch beta_per_launch_back points
                 for k in range(self.beta_per_launch_back):
-
-                    beta = self.inv_map[round(self.e[i],5)][round(cosfp[j], 5)](nr.uniform(0, 1))
+                    try:
+                        beta = self.inv_map[round(self.e[i],5)][round(cosfp[j], 5)](nr.uniform(0, 1))
+                    except:
+                        print(self.inv_map.keys())
+                        print(self.e[i])
                     self.a_dust[i][j][k] = (1 - beta) * self.a[i] * (1 - self.e[i] ** 2) / (
                             1 - self.e[i] ** 2 - 2 * beta * (1 + self.e[i] * cosfp[j]))
                     self.omega_dust[i][j][k] = self.omega[i] + np.arctan2(beta * sinfp[j],
@@ -1515,7 +1526,6 @@ class DebrisDisk:
             for i in range(len(efree)):
                 e = e_vals[np.random.randint(0, len(e_vals))]
                 efree[i] = e
-
             #efree = nr.uniform(0, self.inputdata["e0"], int(self.inputdata["Nback"]))
             Ifree = nr.uniform(
                 np.max((0, self.inputdata["Icent"] * np.pi / 180. - self.inputdata["I0"] * np.pi / 180.)), \
@@ -1635,7 +1645,7 @@ class DebrisDisk:
         pomega = np.arctan2(self.h, self.k)
         self.omega = pomega - self.Omega
         self.I = np.sqrt(self.p ** 2 + self.q ** 2)
-        self.e = np.sqrt(self.h ** 2 + self.k ** 2)
+        self.e = np.sqrt(self.h ** 2 + self.k ** 2) 
 
 
     def get_orbital_elements(self, r0, v, dv, mu, eps):

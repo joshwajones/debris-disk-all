@@ -213,12 +213,13 @@ class DebrisDisk:
 
     def ComputeParentOrbital(self):
         # Compute orbital parameters of parent bodies
-        self.e = np.sqrt(self.h ** 2 + self.k ** 2)
+        #self.e = np.sqrt(self.h ** 2 + self.k ** 2)
         self.I = np.sqrt(self.p ** 2 + self.q ** 2)
         if self.inputdata["launchstyle"] == 7:
             R = self.inputdata["radius"]
             self.e = np.array([self.inputdata["ep"]])
-            e = self.e
+            e = np.array([self.inputdata["ecoll"]])
+            self.e = e
             f = self.inputdata["launch_angle"] * np.pi / 180
             self.a = R*(1.+e*np.cos(f))/(1.-e**2)
             self.Omega = np.array([0.0])

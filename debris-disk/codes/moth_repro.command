@@ -4,6 +4,7 @@ cd "${0%/*}"
 read name
 source /Users/sjosh/opt/anaconda3/etc/profile.d/conda.sh
 conda activate img_2 
+
 python /Users/sjosh/pycharmprojects/research/img_2/debris-disk/codes/gen_debris_disk_single.py $name
 
 Echo "Generating image: Alt -05, Az 90"

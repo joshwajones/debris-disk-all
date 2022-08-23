@@ -223,6 +223,8 @@ class DebrisDisk:
             f = self.inputdata["launch_angle"] * np.pi / 180
             self.a = R*(1.+e*np.cos(f))/(1.-e**2)
             self.Omega = np.array([0.0])
+            if "Omcoll" in self.inputdata:
+                self.Omega = np.array([self.inputdata["Omcoll"]])
             self.omega = np.array([0.0]) - self.Omega - f
         else:
             self.Omega = np.arctan2(self.p, self.q)

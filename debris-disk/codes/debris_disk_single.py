@@ -378,6 +378,12 @@ class DebrisDisk:
                     velocity_eq = M @ velocity_orbplane
                     coords_orbplane = [radius * cosfp[j], radius * sinfp[j], 0]
                     coords_eq = M @ coords_orbplane
+
+                    print(velocity_eq)
+                    print(coords_eq)
+                    print(self.Omega[i])
+                    pdiewo
+
                     start_time_func = time.time()
                     a, e, I, O, w, f = self.get_orbital_elements_rand_dv(coords_eq, velocity_eq, dv_ratio, mu, 1e-40)
                     end_time_func = time.time()

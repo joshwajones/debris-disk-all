@@ -28,5 +28,3 @@ python /Users/sjosh/pycharmprojects/research/img_2/debris-disk/codes/save_altaz.
 
 Echo "Generating image: Alt -45, Az 90"
 python /Users/sjosh/pycharmprojects/research/img_2/debris-disk/codes/save_altaz.py 400 10 $name -45 90 1 100
-
-

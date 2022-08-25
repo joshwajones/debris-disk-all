@@ -386,8 +386,12 @@ class DebrisDisk:
 
                     #hard-coding for double collision
                     if "hardcode" in self.inputdata:
-                        coords_eq = np.array([-radius * np.cos(self.I[i]), 0, -radius * np.sin(self.I[i])])
-                        velocity_eq = np.array([0, -velocity, 0])
+                        if self.inputdata["hardcode"] == 1:
+                            coords_eq = np.array([-radius * np.cos(self.I[i]), 0, -radius * np.sin(self.I[i])])
+                            velocity_eq = np.array([0, -velocity, 0])
+                        elif self.inputdata["hardcode"] == 2:
+                            coords_eq = np.array([radius * np.cos(self.I[i]), 0, radius * np.sin(self.I[i])])
+                            velocity_eq = np.array([0, velocity, 0])
 
                     start_time_func = time.time()
                     a, e, I, O, w, f = self.get_orbital_elements_rand_dv(coords_eq, velocity_eq, dv_ratio, mu, 1e-40)

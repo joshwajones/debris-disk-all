@@ -390,7 +390,7 @@ class DebrisDisk:
                             coords_eq = np.array([-radius * np.cos(self.I[i]), 0, -radius * np.sin(self.I[i])])
                             velocity_eq = np.array([0, -velocity, 0])
                         elif self.inputdata["hardcode"] == 2:
-                            coords_eq = np.array([radius * np.cos(self.I[i]), 0, radius * np.sin(self.I[i])])
+                            coords_eq = np.array([radius * np.cos(self.I[i]), 0, -radius * np.sin(self.I[i])])
                             velocity_eq = np.array([0, velocity, 0])
 
                     start_time_func = time.time()

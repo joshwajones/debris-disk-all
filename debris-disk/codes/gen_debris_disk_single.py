@@ -33,6 +33,10 @@ dd.ComputeBackgroundParentOrbital_Optimized()
 #dd.ComputeBackgroundDustGrains_BetaOptimized2()
 dd.ComputeBackgroundDustGrains_Optimized()
 
+dd.ComputeForkParentSingle() 
+dd.ComputeForkParentOrbital()
+dd.ComputeForkDustGrains() 
+
 #dd.Plot_pqhk()
 #dd.Plot3DOrbit()
 

@@ -1014,6 +1014,138 @@ class DebrisDisk:
         cosf = np.linspace(-1, 1, int(self.inputdata["Nlaunchback"]))
         cosf_val
 
+    def ComputeForkDustGrains(self, manual=False, beta=0.3, Nlaunch=10):
+        # Compute orbital parameters of launched dust grains
+        # beta = Prad/Pgrav
+        # Nback: number of parent background orbits
+        # Nlaunchback = launch points per parent body orbit
+        if "Nforkback" not in self.inputdata or "Nfork" not in self.inputdata:
+            return
+        print("Computing Fork Dust Grain Orbits...")
+        start_time = time.time()
+        if manual:
+            self.beta = beta
+            Nforkback = Nforkback
+        elif self.inputdata["betadistrb"] == 0:
+            self.beta = self.inputdata["beta"]
+            Nforkback = int(self.inputdata["Nforkback"])
+            self.beta_dust = np.ones((len(self.h), Nforkback)) * self.beta
+        else:
+            Nforkback = int(self.inputdata["Nforkback"])
+            betapow = self.inputdata["betadistrb"]
+            betamin, betamax = self.inputdata["betamin"], self.inputdata["betamax"]
+            self.beta_dust = np.zeros((len(self.h), Nforkback))
+
+        self.a_dust = np.zeros((len(self.h), Nforkback))  # len(self.h) is Nfork - this is Nfork x Nforkback array
+        self.e_dust = np.zeros((len(self.h), Nforkback))
+        self.I_dust = np.zeros((len(self.h), Nforkback))
+        self.Omega_dust = np.zeros((len(self.h), Nforkback))
+        self.omega_dust = np.zeros((len(self.h), Nforkback))
+
+        lps = np.zeros((len(self.h), Nforkback))
+        mu = consts.G * self.Mstar
+        matrix_time = 0
+        ejecta_time = 0
+        beta_calcs_time = 0
+        beta_application_time = 0
+        time_in_func = 0
+        self.e_max = 0.02
+        self.cosf_max = 1
+        start_beta_calcs = time.time()
+        end_beta_calcs = time.time()
+        beta_calcs_time += end_beta_calcs - start_beta_calcs
+
+        N = 30
+        a_launch = np.ones(N) * 200.
+        e_launch = np.ones(N) * 0.7
+        I_launch = np.ones(N) * 0.05
+        Omega_launch = np.random.uniform(0, 2 * np.pi, N)
+        omega_launch = -Omega_launch
+        #R = []
+        X = []
+        Y = []
+        Z = []
+        for i in range(len(self.h)):  # for each parent body
+            print("%i/%i background parent body" % (i + 1, len(self.h)))
+            #fp = nr.uniform(0, 2 * np.pi, Nforkback)  # get random true anomaly for each
+            fp = np.linspace(0, 2 * np.pi, Nforkback)
+            lps[i] = fp
+            cosfp = np.cos(fp)
+            sinfp = np.sin(fp)
+
+            self.e_max = self.e[i]
+            self.cosf_max = np.max(cosfp)
+
+            start_beta_calcs = time.time()
+            # inverseCDF = bd.get_inverse_CDF_stab(e=self.e_max, cosf=self.cosf_max, betapow=betapow,
+            #                                      betamin=betamin, betamax=betamax, stabfac=self.stabfac_back,
+            #                                      precision=500)
+            #
+            # self.beta_dust[i] = bd.OrbTimeCorr_Vectorized(inverseCDF, Nforkback)
+            #self.beta_dust[i] = 0.1 * np.ones(Nforkback)
+            for j in range(Nforkback): #for each launch site
+                self.beta_dust[i][j] = bd.OrbTimeCorr_Original(self.e[i], np.cos(fp[j]), Ndust=1, stabfac=0.997, betamax=1.0)
+            end_beta_calcs = time.time()
+            beta_calcs_time += end_beta_calcs - start_beta_calcs
+
+            start_beta_application_time = time.time()
+            self.a_dust[i, :] = (1 - self.beta_dust[i, :]) * self.a[i] * (1 - self.e[i] ** 2) / \
+                                (1 - self.e[i] ** 2 - 2 * self.beta_dust[i, :] * (1 + self.e[i] * cosfp))
+            self.e_dust[i, :] = np.sqrt(
+                self.e[i] ** 2 + 2 * self.beta_dust[i, :] * self.e[i] * cosfp + self.beta_dust[i, :] ** 2) / (
+                                        1 - self.beta_dust[i, :])
+            self.omega_dust[i, :] = self.omega[i] + np.arctan2(self.beta_dust[i, :] * sinfp,
+                                                               self.e[i] + self.beta_dust[i, :] * cosfp)
+
+            self.I_dust[i, :] = self.I[i]
+            self.Omega_dust[i, :] = self.Omega[i]
+
+            R = self.a_dust[i] * (1 - self.e_dust[i]**2) / ( 1 + self.e_dust[i] * cosfp)
+            X.extend(R * (np.cos(self.Omega_dust[i]) * np.cos(self.omega_dust[i] + fp) - np.sin(self.Omega_dust[i]) * np.sin(
+                self.omega_dust[i] + fp)))
+            Y.extend(R * (np.sin(self.Omega_dust[i]) * np.cos(self.omega_dust[i] + fp) + np.cos(self.Omega_dust[i]) * np.sin(
+                self.omega_dust[i] + fp)))
+            Z.extend(R * np.sin(self.omega_dust[i] + fp) * np.sin(self.I_dust[i]))
+
+
+            uboundi = np.where(self.a_dust[i, :] < 0)[0]
+            if len(uboundi) > 0 and self.inputdata["betadistrb"] != 0:
+                pdb.set_trace()
+            end_beta_application_time = time.time()
+            beta_application_time += end_beta_application_time - start_beta_application_time
+
+        lps = lps.flatten()
+        np.savetxt('launchpoints.txt', lps)
+        np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + "forktest2_X.txt", X)
+        np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + "forktest2_Y.txt", Y)
+        np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + "forktest2_Z.txt", Z)
+
+        self.a_dust = self.a_dust.flatten()
+        self.e_dust = self.e_dust.flatten()
+        self.I_dust = self.I_dust.flatten()
+        self.Omega_dust = self.Omega_dust.flatten()
+        self.omega_dust = self.omega_dust.flatten()
+        self.beta_dust = self.beta_dust.flatten()
+
+        uboundi = np.where(self.a_dust < 0)[0]
+        if len(uboundi) == len(self.a_dust): pdb.set_trace()
+        if len(uboundi) > 0:
+            goodi = np.where(self.a_dust > 0)[0]
+            self.a_dust = self.a_dust[goodi]
+            self.e_dust = self.e_dust[goodi]
+            self.I_dust = self.I_dust[goodi]
+            self.Omega_dust = self.Omega_dust[goodi]
+            self.omega_dust = self.omega_dust[goodi]
+            self.beta_dust = self.beta_dust[goodi]
+
+        self.SaveValues()
+        print("Dust grains computed.")
+        print("Time spent computing matrices:  ", matrix_time)
+        print("Time spent computing betas:  ", beta_calcs_time)
+        print("Time applying radiation pressure formulae:    ", beta_application_time)
+        end_time = time.time()
+        print("Total time: ", end_time - start_time)
+        # print("Betamax:     ", approx_betamax)
 
     def ComputeBackgroundDustGrains_Optimized(self, manual=False, beta=0.3, Nlaunch=10):
         # Compute orbital parameters of launched dust grains
@@ -1442,6 +1574,63 @@ class DebrisDisk:
         ax.set_position([0., 0., 1., 1.])
         fig.show()
 
+    def ComputeForkParentSingle(self, manual=False, Nback=500, amin=4., amax=6., I0=5. * (np.pi / 180.),
+                                                e0=0.2,
+                                                Omega0=0., omega0=0., random=False):
+        # Compute p, q, h, k of parent bodies for background disk
+        # Single planet only
+        # Nback: number of parent bodies
+        # amin, amax: min, max semi-major axes of parent bodies
+        # I0, e0: initial mutual inclination and eccentricities
+        # Omega0, omega0: initial nodal angle and argument of periapse
+        if "Nforkback" not in self.inputdata or "Nfork" not in self.inputdata:
+            return
+
+        Nfork = int(self.inputdata["Nfork"])
+        print("Computing Fork Parent Orbits (single planet)...")
+        self.a = self.inputdata["afork"] * np.ones(Nfork)
+        #self.a = np.array([self.inputdata["afork"] for _ in range(Nfork)])
+        self.Ifork = self.inputdata["Ifork"]
+        self.efork = self.inputdata["efork"]
+        self.Omega = np.linspace(0, 2 * np.pi, Nfork)
+        self.omega = -self.Omega
+
+
+        self.A = ff.A(self.a, self.Mp[0], self.ap[0], Mstar=self.Mstar)
+        self.Aj = ff.Aj(self.a, self.Mp[0], self.ap[0], Mstar=self.Mstar)
+        self.B = ff.B(self.a, self.Mp[0], self.ap[0], Mstar=self.Mstar)
+        self.Bj = ff.Bj(self.a, self.Mp[0], self.ap[0], Mstar=self.Mstar)
+
+        # forced component
+        self.h0 = -(self.Aj / self.A) * self.ep[0] * np.sin(self.Omegap[0] + self.omegap[0])
+        self.k0 = -(self.Aj / self.A) * self.ep[0] * np.cos(self.Omegap[0] + self.omegap[0])
+        self.p0 = -(self.Bj / self.B) * self.Ip[0] * np.sin(self.Omegap[0])
+        self.q0 = -(self.Bj / self.B) * self.Ip[0] * np.cos(self.Omegap[0])
+
+
+        # self.h = efree * np.sin(omega + Omega) + self.h0
+        # self.k = efree * np.cos(omega + Omega) + self.k0
+        # self.p = Ifree * np.sin(Omega) + self.p0
+        # self.q = Ifree * np.cos(Omega) + self.q0
+        self.h = self.h0
+        self.k = self.k0
+        self.p = self.p0
+        self.q = self.q0
+
+
+    def ComputeForkParentOrbital(self):
+        # Compute orbital parameters of parent bodies
+        # compare with what we expect
+        N = len(self.p)
+        self.Omega = np.random.uniform(0, 2*np.pi, N)
+        self.omega = np.zeros(N) - self.Omega
+        self.I = 0.05 * np.ones(N) #np.array([0.05])
+        self.e = 0.7 * np.ones(N) #np.array([0.7])
+        # self.Omega = np.arctan2(self.p, self.q)
+        # pomega = np.arctan2(self.h, self.k)
+        # self.omega = pomega - self.Omega
+        # self.I = np.sqrt(self.p ** 2 + self.q ** 2)
+        # self.e = np.sqrt(self.h ** 2 + self.k ** 2)
 
     def ComputeBackgroundParentSingle_Optimized(self, manual=False, Nback=500, amin=4., amax=6., I0=5. * (np.pi / 180.), e0=0.2,
                             Omega0=0., omega0=0., random=False):

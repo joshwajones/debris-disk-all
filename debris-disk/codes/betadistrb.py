@@ -16,6 +16,19 @@ import pdb
 
 rand_number = 0.7991
 
+
+def OrbTimeCorr_Original(e, cosf, betapow=1.5, betamin=0.001, betamax=1, Ndust=100000, stabfac = 0.998):
+    dNdbeta = lambda beta: beta**betapow*(1-beta)**1.5*(1-e**2-2*beta*(1+e*cosf))**-1.5
+    f_betamax = ((1-e**2)/2./(1+e*cosf))*stabfac # for numerical stability
+    if f_betamax > 1: f_betamax = betamax*stabfac
+    norm = sint.quad(dNdbeta, betamin, f_betamax)[0]
+
+    Nbeta = lambda beta: sint.quad(dNdbeta, betamin, beta)[0]/norm
+    Nbeta = np.vectorize(Nbeta)
+
+    invNbeta = si.interp1d(Nbeta(np.linspace(betamin*0.8, f_betamax, 20)), np.linspace(betamin*0.8, f_betamax, 20))
+    return invNbeta(nr.uniform(0, 1, Ndust))
+
 def OrbTimeCorr_MidOptimized_Background_2(e_set, num_f=10, n_beta_grid=50, betapow=1.5, betamin=0.001, stabfac=0.997):
 
     #return inverse CDF for e, cosf combo
@@ -336,14 +349,6 @@ def OrbTimeCorr_opt(e, cosf, betapow=1.5, betamin=0.001, betamax=0.5, Ndust=1000
 def get_inverse_CDF(e=0, cosf=1, betapow=1.5, betamin=0.001, betamax=1, Ndust=100000, stabfac = 0.998, beta_bounded=False, a=50, Mstar=1, Tage=float('inf'), precision=100):
     dNdbeta = lambda beta: beta ** betapow * (1 - beta) ** 1.5 * (1 - e ** 2 - 2 * beta * (1 + e * cosf)) ** -1.5
     f_betamax = (1 - e ** 2) / 2. / (1 + e * cosf) * stabfac
-    if beta_bounded:
-        a *= consts.au2cm
-        mu = consts.G * Mstar
-        half_period_term = pow((mu * Tage ** 2 / (np.pi ** 2)), 1. / 3.)
-        maxbeta_calc = stabfac * (1. - e ** 2) * (a - half_period_term) / (
-                a * (1. - e ** 2) - 2. * half_period_term * (1. + e * cosf))
-        maxbeta_calc = max(maxbeta_calc, 0) #Handle case where < 0? happens for small-medium ages
-        f_betamax = min(f_betamax, maxbeta_calc)
     if f_betamax > betamax:
         f_betamax = stabfac * betamax
 

@@ -19,7 +19,6 @@ Echo "Generating image: Alt -90, Az 90"
 python /Users/sjosh/pycharmprojects/research/img_2/debris-disk/codes/save_altaz.py 400 10 $name -90 90 1 100 
 
 
-
 Echo "Generating image: Alt -10, Az 90"
 python /Users/sjosh/pycharmprojects/research/img_2/debris-disk/codes/save_altaz.py 400 10 $name -10 90 1 100 
 

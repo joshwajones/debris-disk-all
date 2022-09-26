@@ -1068,7 +1068,7 @@ class DebrisDisk:
         for i in range(len(self.h)):  # for each parent body
             print("%i/%i background parent body" % (i + 1, len(self.h)))
             #fp = nr.uniform(0, 2 * np.pi, Nforkback)  # get random true anomaly for each
-            fp = np.linspace(0, 2 * np.pi, Nforkback)
+            fp = np.linspace(0, 2 * np.pi, Nforkback)   
             lps[i] = fp
             cosfp = np.cos(fp)
             sinfp = np.sin(fp)

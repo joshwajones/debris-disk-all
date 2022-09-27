@@ -19,6 +19,8 @@ import math
 import datetime
 import time
 import random
+import scipy.integrate as sint
+import scipy.interpolate as si
 
 
 class DebrisDisk:
@@ -1014,6 +1016,215 @@ class DebrisDisk:
         cosf = np.linspace(-1, 1, int(self.inputdata["Nlaunchback"]))
         cosf_val
 
+    def ComputeForkDust_Optimized2(self, fileName):
+        # launch sites --- NO radiation pressure
+        code_start = time.time()
+        Nlaunch = int(self.inputdata["Nfork"])
+        I_launch = np.ones(Nlaunch) * 0.05
+        a_launch = np.ones(Nlaunch) * 200.
+        e_launch = np.ones(Nlaunch) * 0.7
+        Omega_launch = np.random.uniform(0., 2. * np.pi, Nlaunch)
+        pomega_launch = 0.0 * np.pi / 2.
+        omega_launch = pomega_launch - Omega_launch
+        # Assume launch site true anomalies are drawn uniformly from 0 to 2*pi
+        # Also assume one f_launch for every one Omega_launch
+        f_launch = np.random.uniform(0., 2. * np.pi, Nlaunch)
+        cosf_launch = np.cos(f_launch)
+        sinf_launch = np.sin(f_launch)
+
+        ## beta distribution parameters
+        stabfac = 0.997  # needs to be less than 1 since integral diverges. if 0.997 then max Q_dust ~ 20000 au
+        betamin = 0.001  # betamin is a scalar
+        # One unique betamax for every launch site
+        betamax = (1. - e_launch ** 2) / (2. * (1. + e_launch * cosf_launch))  # betamax is an array
+        betamax = betamax * stabfac  # otherwise integral diverges
+
+        ## now create dust particle orbits which are affected by radiation pressure
+        betapow = 1.5
+        beta_per_launch = int(self.inputdata["beta_per_launch"])  # Number of beta's to draw per launch site
+        # Therefore number of dust particles = Nlaunch * beta_per_launch
+
+        a_dust = np.zeros(Nlaunch * beta_per_launch)
+        e_dust = np.zeros(Nlaunch * beta_per_launch)
+        I_dust = np.zeros(Nlaunch * beta_per_launch)
+        Omega_dust = np.zeros(Nlaunch * beta_per_launch)
+        omega_dust = np.zeros(Nlaunch * beta_per_launch)
+        beta_dust = np.zeros(Nlaunch * beta_per_launch)
+        X = [] 
+        Y = [] 
+        Z = [] 
+
+        for j in range(len(betamax)):  # loop over Nlaunch directions (betamax.size = Nlaunch)
+
+            e_scalar = e_launch[
+                j]  # creating these scalars is not strictly necessary but there seems to be slight speed advantage for dNdbeta
+            cosf_scalar = cosf_launch[j]
+            betamax_scalar = betamax[j]
+
+            # dNdbeta should account for non-zero e and non-unity cosf_scalar
+            dNdbeta = lambda beta: beta ** betapow * (1 - beta) ** 1.5 * (
+                        1 - e_scalar ** 2 - 2 * beta * (1 + e_scalar * cosf_scalar)) ** -1.5
+
+            # create a smooth beta-grid that concentrates precision near betamax_scalar
+            how_close = 1.e-3  # how fractionally close the SECOND-TO-LAST beta grid point comes to betamax_scalar
+            n_beta_grid = 50  # number of points in the beta-grid = number of points in the cumulative Nbeta
+            epsmax = np.log10(betamax_scalar - betamin)
+            epsmin = np.log10(how_close * betamax_scalar)
+            eps = np.linspace(epsmax, epsmin, n_beta_grid - 1)
+            beta = betamax_scalar - 10. ** eps
+            beta = np.append(beta,
+                             betamax_scalar)  # need to include betamax as part of the array for later interpolation to work
+            # beta = np.linspace(betamin,betamax_scalar,1000)
+
+            norm = sint.quad(dNdbeta, betamin, betamax_scalar)[0]
+            Nbeta = lambda beta: sint.quad(dNdbeta, betamin, beta)[0] / norm
+            Nbeta = np.vectorize(Nbeta)
+
+            x = nr.uniform(0, 1, beta_per_launch)
+            invNbeta = si.interp1d(Nbeta(beta), beta)
+
+            beta_segment = invNbeta(x)  # there are beta_per_launch values in beta_segment
+            # plt.hist(beta_segment,bins=100,log=True)
+            #beta_segment = np.zeros(beta_per_launch)
+
+            # calculate orbital elements corresponding to the jth launch site, varying beta
+            beg = j * beta_per_launch
+            end = beg + beta_per_launch
+            a_dust[beg:end] = (1 - beta_segment) * a_launch[j] * (1 - e_launch[j] ** 2) / (
+                        1 - e_launch[j] ** 2 - 2 * beta_segment * (1 + e_launch[j] * cosf_launch[j]))
+            omega_dust[beg:end] = omega_launch[j] + np.arctan2(beta_segment * sinf_launch[j],
+                                                               e_launch[j] + beta_segment * cosf_launch[j])
+            e_dust[beg:end] = np.sqrt(
+                e_launch[j] ** 2 + 2 * beta_segment * e_launch[j] * cosf_launch[j] + beta_segment ** 2) / (
+                                          1 - beta_segment)
+            I_dust[beg:end] = I_launch[j]
+            Omega_dust[beg:end] = Omega_launch[j]
+            beta_dust[beg:end] = beta_segment
+            cosfp = cosf_scalar
+            fp = f_launch[j]
+            R = a_dust[beg:end] * (1 - e_dust[beg:end] ** 2) / (1 + e_dust[beg:end] * cosfp)
+            X.extend(
+                R * (np.cos(Omega_dust[beg:end]) * np.cos(omega_dust[beg:end] + fp) - np.sin(Omega_dust[beg:end]) * np.sin(
+                    omega_dust[beg:end] + fp)))
+            Y.extend(
+                R * (np.sin(Omega_dust[beg:end]) * np.cos(omega_dust[beg:end] + fp) + np.cos(Omega_dust[beg:end]) * np.sin(
+                    omega_dust[beg:end] + fp)))
+            Z.extend(R * np.sin(omega_dust[beg:end] + fp) * np.sin(I_dust[beg:end]))
+            # end for loop over j
+
+        np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + f"{fileName}_X.txt", X)
+        np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + f"{fileName}_Y.txt", Y)
+        np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + f"{fileName}_Z.txt", Z)
+        self.a_dust = np.array(list(a_dust)).flatten()
+        self.e_dust = np.array(list(e_dust)).flatten()
+        self.omega_dust = np.array(list(omega_dust)).flatten()
+        self.Omega_dust = np.array(list(Omega_dust)).flatten()
+        self.I_dust = np.array(list(I_dust)).flatten()
+        self.beta_dust = np.array(list(beta_dust)).flatten()
+        self.SaveValues()
+        code_stop = time.time()
+        print('Number of dust particles = Nlaunch * beta_per_launch = ', Nlaunch * beta_per_launch)
+        print('Time to run code:', code_stop - code_start)
+
+
+    def ComputeForkDust_Optimized(self, manual=False, beta=0.3, fileName="forktest2"):
+        if "Nforkback" not in self.inputdata or "Nfork" not in self.inputdata:
+            return
+        print("Computing Fork Dust Grain Orbits...")
+        if manual:
+            self.beta = beta
+            Nforkback = Nforkback
+        elif self.inputdata["betadistrb"] == 0:
+            self.beta = self.inputdata["beta"]
+            Nforkback = int(self.inputdata["Nforkback"])
+            self.beta_dust = np.ones((len(self.h), Nforkback)) * self.beta
+        else:
+            Nforkback = int(self.inputdata["Nforkback"])
+            Nfork = int(self.inputdata["Nfork"])
+            betapow = self.inputdata["betadistrb"]
+            betamin, betamax = self.inputdata["betamin"], self.inputdata["betamax"]
+            self.beta_dust = np.zeros((len(self.h), Nforkback))
+            beta_per_fork = int(self.inputdata["beta_per_fork"])
+
+        #one launch point per orbit, launching many different betas
+        self.a_dust = np.zeros(Nfork, beta_per_fork)
+        self.e_dust = np.zeros(len(self.h), beta_per_fork)
+        self.I_dust = np.zeros(len(self.h), beta_per_fork)
+        self.Omega_dust = np.zeros(len(self.h), beta_per_fork)
+        self.omega_dust = np.zeros(len(self.h), beta_per_fork)
+        mu = consts.G * self.Mstar
+        R = []
+        X = []
+        Y = []
+        Z = []
+        for i in range(len(self.h)):  # for each parent body/parent orbit. should be Nfork
+            print("%i/%i fork parent body" % (i + 1, len(self.h)))
+            fp = np.uniform(0, 2*np.pi, Nforkback)
+            cosf = np.cos(fp)
+            sinf = np.sin(fp)
+            #initial: orbital elements of dust grains before applying radiation pressure
+            self.a_initial = np.array(Nforkback * [self.a[i]])
+            self.e_initial = np.array(Nforkback * [self.e[i]])
+            self.I_initial = np.array(Nforkback * [self.I[i]])
+            self.Omega_initial = np.array(Nforkback * [self.Omega[i]])
+            self.omega_initial = np.array(Nforkback * [self.omega[i]])
+            self.cosf_initial = cosfp
+            self.sinf_initial = sinfp
+            for j in range(len(fp)): #for each launch point, get betamax and interp
+                inverseCDF = bd.get_inverse_CDF_stab(e=self.e[i], cosf=cosf[j])
+                beta = inverseCDF(nr.uniform(0, 1, beta_per_fork))
+
+                self.a_dust[i][j] = (1 - beta) * self.a[i] * (1 - self.e[i] ** 2) / (
+                        1 - self.e[i] ** 2 - 2 * beta * (1 + self.e[i] * cosfp[j]))
+                self.omega_dust[i][j] = self.omega[i] + np.arctan2(beta * sinfp[j],
+                                                                      self.e[i] + beta * cosfp[j])
+                self.e_dust[i][j] = np.sqrt(
+                    self.e[i] ** 2 + 2 * beta * self.e[i] * cosfp[j] + beta ** 2) / (
+                                               1 - beta)
+                self.I_dust[i][j] = self.I[j] * np.ones(beta_per_fork)
+                self.Omega_dust[i][j] = self.Omega[j] * np.ones(beta_per_fork)
+                self.beta_dust[i][j] = beta
+
+                R = self.a_dust[i][j] * (1 - self.e_dust[i][j] ** 2) / (1 + self.e_dust[i][j] * cosfp)
+                X.extend(R * (np.cos(self.Omega_dust[i][j]) * np.cos(self.omega_dust[i][j] + fp) - np.sin(
+                    self.Omega_dust[i][j]) * np.sin(
+                    self.omega_dust[i][j] + fp)))
+                Y.extend(R * (np.sin(self.Omega_dust[i][j]) * np.cos(self.omega_dust[i][j] + fp) + np.cos(
+                    self.Omega_dust[i][j]) * np.sin(
+                    self.omega_dust[i][j] + fp)))
+                Z.extend(R * np.sin(self.omega_dust[i][j] + fp) * np.sin(self.I_dust[i][j]))
+
+            # uboundi = np.where(self.a_dust[:] < 0)[0]
+            # if len(uboundi) > 0 and self.inputdata["betadistrb"] != 0:
+            #     pdb.set_trace()
+
+        # lps = lps.flatten()
+        # np.savetxt('launchpoints.txt', lps)
+        np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + f"{fileName}_X.txt", X)
+        np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + f"{fileName}_Y.txt", Y)
+        np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + f"{fileName}_Z.txt", Z)
+
+        self.a_dust = self.a_dust.flatten()
+        self.e_dust = self.e_dust.flatten()
+        self.I_dust = self.I_dust.flatten()
+        self.Omega_dust = self.Omega_dust.flatten()
+        self.omega_dust = self.omega_dust.flatten()
+        self.beta_dust = self.beta_dust.flatten()
+
+        uboundi = np.where(self.a_dust < 0)[0]
+        if len(uboundi) == len(self.a_dust): pdb.set_trace()
+        if len(uboundi) > 0:
+            goodi = np.where(self.a_dust > 0)[0]
+            self.a_dust = self.a_dust[goodi]
+            self.e_dust = self.e_dust[goodi]
+            self.I_dust = self.I_dust[goodi]
+            self.Omega_dust = self.Omega_dust[goodi]
+            self.omega_dust = self.omega_dust[goodi]
+            self.beta_dust = self.beta_dust[goodi]
+
+        self.SaveValues()
+
+
     def ComputeForkDustGrains(self, manual=False, beta=0.3, Nlaunch=10):
         # Compute orbital parameters of launched dust grains
         # beta = Prad/Pgrav
@@ -1068,7 +1279,7 @@ class DebrisDisk:
         for i in range(len(self.h)):  # for each parent body
             print("%i/%i background parent body" % (i + 1, len(self.h)))
             #fp = nr.uniform(0, 2 * np.pi, Nforkback)  # get random true anomaly for each
-            fp = np.linspace(0, 2 * np.pi, Nforkback)   
+            fp = np.linspace(0, 2 * np.pi, Nforkback)
             lps[i] = fp
             cosfp = np.cos(fp)
             sinfp = np.sin(fp)

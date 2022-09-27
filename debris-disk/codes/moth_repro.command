@@ -1,6 +1,7 @@
 #! /bin/bash
 # takes in file name and generates images at 3, 5, 10, 90 altitudes
 cd "${0%/*}"
+
 read name
 source /Users/sjosh/opt/anaconda3/etc/profile.d/conda.sh
 conda activate img_2 

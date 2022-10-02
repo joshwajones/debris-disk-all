@@ -1016,6 +1016,130 @@ class DebrisDisk:
         cosf = np.linspace(-1, 1, int(self.inputdata["Nlaunchback"]))
         cosf_val
 
+    def ComputeForkDust_Optimized3(self, fileName):
+        code_start = time.time()
+        # launch sites --- NO radiation pressure
+        Nlaunch = int(self.inputdata["Nfork"])
+        I_launch = np.ones(Nlaunch) * 0.05
+        a_launch = np.ones(Nlaunch) * 200.
+        e_launch = np.ones(Nlaunch) * 0.7
+        # omega_launch = np.ones(Nlaunch)*-1.*np.pi/4.
+        # omega_launch = np.random.uniform(0., 2.*np.pi, Nlaunch)
+        Omega_launch = np.random.uniform(0., 2. * np.pi, Nlaunch)
+        pomega_launch = 0.0 * np.pi / 2.
+        omega_launch = pomega_launch - Omega_launch
+        f_launch = np.random.uniform(0., 2. * np.pi, Nlaunch)
+        cosf_launch = np.cos(f_launch)
+        sinf_launch = np.sin(f_launch)
+
+        ## beta distribution parameters
+        stabfac = 0.997  # needs to be less than 1 since integral diverges. if 0.997 then max Q_dust ~ 20000 au
+        betamin = 0.001  # betamin is a scalar
+        betamax = (1. - e_launch ** 2) / (2. * (1. + e_launch * cosf_launch))  # betamax is an array!
+        betamax = betamax * stabfac  # otherwise integral diverges
+
+        betapow = 1.5
+        beta_per_launch = int(self.inputdata["beta_per_fork"])  # number of dust particles = beta_per_launch * Nlaunch
+
+        a_dust = np.zeros((Nlaunch, beta_per_launch))
+        e_dust = np.zeros((Nlaunch, beta_per_launch))
+        I_dust = np.zeros((Nlaunch, beta_per_launch))
+        Omega_dust = np.zeros((Nlaunch, beta_per_launch))
+        omega_dust = np.zeros((Nlaunch, beta_per_launch))
+        beta_dust = np.zeros((Nlaunch, beta_per_launch))
+
+        for j in range(len(betamax)):  # loop over Nlaunch directions (betamax.size = Nlaunch)
+            print(f"Computing {j}/{len(betamax)} fork parent bodies...")
+
+            e_scalar = e_launch[
+                j]  # creating these scalars is not strictly necessary but there seems to be slight speed advantage for dNdbeta
+            cosf_scalar = cosf_launch[j]
+            betamax_scalar = betamax[j]
+
+            # dNdbeta should account for non-zero e and non-unity cosf_scalar
+            dNdbeta = lambda beta: beta ** betapow * (1 - beta) ** 1.5 * (
+                        1 - e_scalar ** 2 - 2 * beta * (1 + e_scalar * cosf_scalar)) ** -1.5
+
+            # create a smooth beta-grid that concentrates precision near betamax_scalar
+            how_close = 1.e-3  # how fractionally close the SECOND-TO-LAST beta grid point comes to betamax_scalar
+            n_beta_grid = 50  # number of points in the beta-grid = number of points in the cumulative Nbeta
+            epsmax = np.log10(betamax_scalar - betamin)
+            epsmin = np.log10(how_close * betamax_scalar)
+            eps = np.linspace(epsmax, epsmin, n_beta_grid - 1)
+            beta = betamax_scalar - 10. ** eps
+            beta = np.append(beta,
+                             betamax_scalar)  # need to include betamax as part of the array for later interpolation to work
+            # beta = np.linspace(betamin,betamax_scalar,1000)
+
+            norm = sint.quad(dNdbeta, betamin, betamax_scalar)[0]
+            Nbeta = lambda beta: sint.quad(dNdbeta, betamin, beta)[0] / norm
+            Nbeta = np.vectorize(Nbeta)
+
+            x = nr.uniform(0, 1, beta_per_launch)
+            invNbeta = si.interp1d(Nbeta(beta), beta)
+
+            beta_segment = invNbeta(x)  # there are beta_per_launch values in beta_segment
+            # plt.hist(beta_segment,bins=100,log=True)
+
+            # calculate orbital elements corresponding to the jth direction, varying beta
+            # beg = j * beta_per_launch
+            # end = beg + beta_per_launch
+            a_dust[j] = (1 - beta_segment) * a_launch[j] * (1 - e_launch[j] ** 2) / (
+                        1 - e_launch[j] ** 2 - 2 * beta_segment * (1 + e_launch[j] * cosf_launch[j]))
+            omega_dust[j] = omega_launch[j] + np.arctan2(beta_segment * sinf_launch[j],
+                                                               e_launch[j] + beta_segment * cosf_launch[j])
+            e_dust[j] = np.sqrt(
+                e_launch[j] ** 2 + 2 * beta_segment * e_launch[j] * cosf_launch[j] + beta_segment ** 2) / (
+                                          1 - beta_segment)
+            I_dust[j] = I_launch[j] * np.ones(beta_per_launch)
+            Omega_dust[j] = Omega_launch[j] * np.ones(beta_per_launch)
+            beta_dust[j] = beta_segment
+            # end for loop over j
+
+        code_stop = time.time()
+        print('Number of dust particles = Nlaunch * beta_per_launch = ', Nlaunch * beta_per_launch)
+        print('Time to run code:', code_stop - code_start)
+
+        # omega_dust must be calculated before e_dust is updated!
+
+        # plt.hist(Q_dust[np.where(Q_dust < 2000)],bins=100)
+        # plt.hist(Q_dust[np.where(beta_dust > 0.47)],bins=1000)
+
+        # print(a_dust,e_dust,I_dust,Omega_dust,omega_dust)
+
+        true_anom = np.random.uniform(0, 2. * np.pi,
+                                      Nlaunch * beta_per_launch)  # JOSH: THIS LINE IS FOR CONVENIENCE AND SHOULD BE REPLACED BY A PROPER SOLUTION OF KEPLER'S EQUATION THAT SAMPLES MEAN ANOMALIES RANDOMLY AND THEN CONVERTS TO TRUE ANOMALIES.
+        a_dust = a_dust.flatten()
+        omega_dust = omega_dust.flatten()
+        e_dust = e_dust.flatten()
+        I_dust = I_dust.flatten()
+        Omega_dust = Omega_dust.flatten()
+        beta_dust = beta_dust.flatten()
+
+
+        R = a_dust * (1 - e_dust ** 2) / (1. + e_dust * np.cos(true_anom))
+        X = R * (np.cos(Omega_dust) * np.cos(omega_dust + true_anom) - np.sin(Omega_dust) * np.sin(
+            omega_dust + true_anom) * np.cos(I_dust))
+        Y = R * (np.sin(Omega_dust) * np.cos(omega_dust + true_anom) + np.cos(Omega_dust) * np.sin(
+            omega_dust + true_anom) * np.cos(I_dust))
+        Z = R * np.sin(omega_dust + true_anom) * np.sin(I_dust)
+        np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + f"{fileName}_X.txt", X)
+        np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + f"{fileName}_Y.txt", Y)
+        np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + f"{fileName}_Z.txt", Z)
+        #
+        # plt.figure(figsize=(10, 4))
+        # plt.xlim([-2000, 1000])
+        # plt.ylim([-200, 200])
+        # plt.scatter(X, Z, s=0.01, color='black')
+        self.a_dust = a_dust
+        self.e_dust = e_dust
+        self.I_dust = I_dust
+        self.Omega_dust = Omega_dust
+        self.omega_dust = omega_dust
+        self.beta_dust = beta_dust
+        self.SaveValues()
+
+
     def ComputeForkDust_Optimized2(self, fileName):
         # launch sites --- NO radiation pressure
         code_start = time.time()
@@ -1042,6 +1166,9 @@ class DebrisDisk:
         ## now create dust particle orbits which are affected by radiation pressure
         betapow = 1.5
         beta_per_launch = int(self.inputdata["beta_per_launch"])  # Number of beta's to draw per launch site
+        print(beta_per_launch)
+        print(Nlaunch)
+        dwed
         # Therefore number of dust particles = Nlaunch * beta_per_launch
 
         a_dust = np.zeros(Nlaunch * beta_per_launch)

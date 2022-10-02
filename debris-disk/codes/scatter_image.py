@@ -104,8 +104,8 @@ def MakeImage_altonly(dustfile, d=10, maxa=100., aspect_ratio=1., resolution=0.0
         inc_y = 2 * maxa / d / Npix_y
         for r, x_alt, z_alt, idust_alt in zip(Rd, Xd_alt, Zd_alt, intensity_alt):
 
-            Xind_alt = np.searchsorted(imx, x_alt * r / d)
-            Zind_alt = np.searchsorted(imy, z_alt * r / d)
+            # Xind_alt = np.searchsorted(imx, x_alt * r / d)
+            # Zind_alt = np.searchsorted(imy, z_alt * r / d)
             #imx = np.linspace(-maxa / d, maxa / d, Npix_x)
             # x_idx = x_alt * r / d / inc + Npix_x / 2
             # if x_idx < Npix_x / 2:
@@ -115,12 +115,12 @@ def MakeImage_altonly(dustfile, d=10, maxa=100., aspect_ratio=1., resolution=0.0
             # print()
             # print(x_alt * r / d )
             # print(Xind_alt)
-            # Xind_alt = find_idx(imx, x_alt, r, d, inc_x, Npix_x) #UNCOMMENT 
+            Xind_alt = find_idx(imx, x_alt, r, d, inc_x, Npix_x) #UNCOMMENT
             # # if x_idx_round != Xind_alt:
             # #     print(i, x_alt*r/d, x_idx_round, Xind_alt)
             # #     pdb.set_trace()
             #
-            # Zind_alt = find_idx(imy, z_alt, r, d, inc_y, Npix_y) #UNCOMMENT 
+            Zind_alt = find_idx(imy, z_alt, r, d, inc_y, Npix_y) #UNCOMMENT
             
             # if z_idx_round != Zind_alt:
             #     print(i, z_alt*r/d, z_idx_round, Zind_alt)

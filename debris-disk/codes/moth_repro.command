@@ -10,7 +10,6 @@ python /Users/sjosh/pycharmprojects/research/img_2/debris-disk/codes/gen_debris_
 
 Echo "Generating image: Alt -05, Az 90"
 python /Users/sjosh/pycharmprojects/research/img_2/debris-disk/codes/save_altaz.py 400 10 $name -05 90 1 100 
-
  
 
 Echo "Generating image: Alt -03, Az 90"

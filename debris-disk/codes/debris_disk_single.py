@@ -1033,7 +1033,10 @@ class DebrisDisk:
         sinf_launch = np.sin(f_launch)
 
         ## beta distribution parameters
-        stabfac = 0.997  # needs to be less than 1 since integral diverges. if 0.997 then max Q_dust ~ 20000 au
+        if "stabfac_fork" in self.inputdata:
+            stabfac = self.inputdata["stabfac_fork"]  # needs to be less than 1 since integral diverges. if 0.997 then max Q_dust ~ 20000 au
+        else:
+            stabfac = 0.997
         betamin = 0.001  # betamin is a scalar
         betamax = (1. - e_launch ** 2) / (2. * (1. + e_launch * cosf_launch))  # betamax is an array!
         betamax = betamax * stabfac  # otherwise integral diverges
@@ -1107,8 +1110,8 @@ class DebrisDisk:
 
         # print(a_dust,e_dust,I_dust,Omega_dust,omega_dust)
 
-        true_anom = np.random.uniform(0, 2. * np.pi,
-                                      Nlaunch * beta_per_launch)  # JOSH: THIS LINE IS FOR CONVENIENCE AND SHOULD BE REPLACED BY A PROPER SOLUTION OF KEPLER'S EQUATION THAT SAMPLES MEAN ANOMALIES RANDOMLY AND THEN CONVERTS TO TRUE ANOMALIES.
+        # true_anom = np.random.uniform(0, 2. * np.pi,
+        #                               Nlaunch * beta_per_launch)  # JOSH: THIS LINE IS FOR CONVENIENCE AND SHOULD BE REPLACED BY A PROPER SOLUTION OF KEPLER'S EQUATION THAT SAMPLES MEAN ANOMALIES RANDOMLY AND THEN CONVERTS TO TRUE ANOMALIES.
         a_dust = a_dust.flatten()
         omega_dust = omega_dust.flatten()
         e_dust = e_dust.flatten()
@@ -1117,15 +1120,32 @@ class DebrisDisk:
         beta_dust = beta_dust.flatten()
 
 
-        R = a_dust * (1 - e_dust ** 2) / (1. + e_dust * np.cos(true_anom))
-        X = R * (np.cos(Omega_dust) * np.cos(omega_dust + true_anom) - np.sin(Omega_dust) * np.sin(
-            omega_dust + true_anom) * np.cos(I_dust))
-        Y = R * (np.sin(Omega_dust) * np.cos(omega_dust + true_anom) + np.cos(Omega_dust) * np.sin(
-            omega_dust + true_anom) * np.cos(I_dust))
-        Z = R * np.sin(omega_dust + true_anom) * np.sin(I_dust)
-        np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + f"{fileName}_X.txt", X)
-        np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + f"{fileName}_Y.txt", Y)
-        np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + f"{fileName}_Z.txt", Z)
+        # R = a_dust * (1 - e_dust ** 2) / (1. + e_dust * np.cos(true_anom))
+        # X = R * (np.cos(Omega_dust) * np.cos(omega_dust + true_anom) - np.sin(Omega_dust) * np.sin(
+        #     omega_dust + true_anom) * np.cos(I_dust))
+        # Y = R * (np.sin(Omega_dust) * np.cos(omega_dust + true_anom) + np.cos(Omega_dust) * np.sin(
+        #     omega_dust + true_anom) * np.cos(I_dust))
+        # Z = R * np.sin(omega_dust + true_anom) * np.sin(I_dust)
+        # np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + f"{fileName}_X.txt", X)
+        # np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + f"{fileName}_Y.txt", Y)
+        # np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + f"{fileName}_Z.txt", Z)
+
+        # mean_anom = np.random.uniform(0, 2.*np.pi, Nlaunch * beta_per_launch)
+        # true_anom = np.zeros(Nlaunch * beta_per_launch)
+        # for idx in range(len(mean_anom)):
+        #     if idx % 100 == 0:
+        #         print("IDX:  ", idx)
+        #     true_anom[idx], _ = ppo.OutputPosition(e=e_dust[idx], Npts=1)
+        #
+        # R = a_dust * (1 - e_dust ** 2) / (1. + e_dust * np.cos(true_anom))
+        # X = R * (np.cos(Omega_dust) * np.cos(omega_dust + true_anom) - np.sin(Omega_dust) * np.sin(
+        #     omega_dust + true_anom) * np.cos(I_dust))
+        # Y = R * (np.sin(Omega_dust) * np.cos(omega_dust + true_anom) + np.cos(Omega_dust) * np.sin(
+        #     omega_dust + true_anom) * np.cos(I_dust))
+        # Z = R * np.sin(omega_dust + true_anom) * np.sin(I_dust)
+        # np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + f"{fileName}_Xtrue.txt", X)
+        # np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + f"{fileName}_Ytrue.txt", Y)
+        # np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + f"{fileName}_Ztrue.txt", Z)
         #
         # plt.figure(figsize=(10, 4))
         # plt.xlim([-2000, 1000])
@@ -1157,7 +1177,7 @@ class DebrisDisk:
         sinf_launch = np.sin(f_launch)
 
         ## beta distribution parameters
-        stabfac = 0.997  # needs to be less than 1 since integral diverges. if 0.997 then max Q_dust ~ 20000 au
+        stabfac = self.inputdata["stabfac_fork"]  # needs to be less than 1 since integral diverges. if 0.997 then max Q_dust ~ 20000 au
         betamin = 0.001  # betamin is a scalar
         # One unique betamax for every launch site
         betamax = (1. - e_launch ** 2) / (2. * (1. + e_launch * cosf_launch))  # betamax is an array

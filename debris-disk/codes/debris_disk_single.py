@@ -1021,8 +1021,10 @@ class DebrisDisk:
         # launch sites --- NO radiation pressure
         Nlaunch = int(self.inputdata["Nfork"])
         I_launch = np.ones(Nlaunch) * 0.05
-        a_launch = np.ones(Nlaunch) * 200.
-        e_launch = np.ones(Nlaunch) * 0.7
+        #a_launch = np.ones(Nlaunch) * 200.
+        #e_launch = np.ones(Nlaunch) * 0.7
+        a_launch = np.ones(Nlaunch) * self.inputdata["afork"]
+        e_launch = np.ones(Nlaunch) * self.inputdata["efork"]
         # omega_launch = np.ones(Nlaunch)*-1.*np.pi/4.
         # omega_launch = np.random.uniform(0., 2.*np.pi, Nlaunch)
         Omega_launch = np.random.uniform(0., 2. * np.pi, Nlaunch)

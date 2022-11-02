@@ -1028,13 +1028,27 @@ class DebrisDisk:
         # omega_launch = np.ones(Nlaunch)*-1.*np.pi/4.
         # omega_launch = np.random.uniform(0., 2.*np.pi, Nlaunch)
         Omega_launch = np.random.uniform(0., 2. * np.pi, Nlaunch)
-        if "exp_B" in self.inputdata:
+        if "exp_C" in self.inputdata:
+            # NEW CODE BLOCK
+            # Laplace-Lagrange collisional family modification
+            ecc_forced = 0.3
+            pomega_forced = 0.
+            h0 = ecc_forced * np.cos(pomega_forced)
+            k0 = ecc_forced * np.sin(pomega_forced)
+            ecc_free = 0.05
+            pomega_free = np.random.uniform(0., 2. * np.pi, Nlaunch)
+            h = h0 + ecc_free * np.cos(pomega_free)
+            k = k0 + ecc_free * np.sin(pomega_free)
+            e_launch = np.sqrt(h ** 2 + k ** 2)
+            pomega_launch = np.arctan2(k, h)
+            print(pomega_launch * 180. / np.pi)
+        elif "exp_B" in self.inputdata:
             pomega_launch = np.random.uniform(-np.pi / 8., np.pi / 8., Nlaunch)
         else:
             pomega_launch = 0.0 * np.pi / 2.
 
         omega_launch = pomega_launch - Omega_launch
-        if "exp_A" in self.inputdata or "exp_B" in self.inputdata:
+        if "exp_A" in self.inputdata or "exp_B" in self.inputdata or "exp_C" in self.inputdata:
             f_launch = np.random.uniform(-np.pi / 2., np.pi / 2., Nlaunch)
         else:
             f_launch = np.random.uniform(0., 2. * np.pi, Nlaunch)

@@ -1028,10 +1028,12 @@ class DebrisDisk:
         # omega_launch = np.ones(Nlaunch)*-1.*np.pi/4.
         # omega_launch = np.random.uniform(0., 2.*np.pi, Nlaunch)
         Omega_launch = np.random.uniform(0., 2. * np.pi, Nlaunch)
-        if "exp_C" in self.inputdata:
-            # NEW CODE BLOCK
+        if "exp_C" or "exp_D" in self.inputdata:
             # Laplace-Lagrange collisional family modification
-            ecc_forced = 0.3
+            if "exp_C":
+                ecc_forced = 0.3
+            else:
+                ecc_forced = 0.
             pomega_forced = 0.
             h0 = ecc_forced * np.cos(pomega_forced)
             k0 = ecc_forced * np.sin(pomega_forced)

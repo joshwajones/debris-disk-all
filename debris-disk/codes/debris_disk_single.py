@@ -1052,6 +1052,8 @@ class DebrisDisk:
         omega_launch = pomega_launch - Omega_launch
         if "exp_A" in self.inputdata or "exp_B" in self.inputdata or "exp_C" in self.inputdata:
             f_launch = np.random.uniform(-np.pi / 2., np.pi / 2., Nlaunch)
+        elif "exp_D" in self.inputdata:
+            f_launch = np.random.uniform(-np.pi, np.pi, Nlaunch)
         else:
             f_launch = np.random.uniform(0., 2. * np.pi, Nlaunch)
         cosf_launch = np.cos(f_launch)

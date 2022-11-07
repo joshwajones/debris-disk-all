@@ -1043,7 +1043,7 @@ class DebrisDisk:
             k = k0 + ecc_free * np.sin(pomega_free)
             e_launch = np.sqrt(h ** 2 + k ** 2)
             pomega_launch = np.arctan2(k, h)
-            print(pomega_launch * 180. / np.pi)
+            #print(pomega_launch * 180. / np.pi)
         elif "exp_B" in self.inputdata:
             pomega_launch = np.random.uniform(-np.pi / 8., np.pi / 8., Nlaunch)
         else:
@@ -1067,6 +1067,8 @@ class DebrisDisk:
         betamin = 0.001  # betamin is a scalar
         betamax = (1. - e_launch ** 2) / (2. * (1. + e_launch * cosf_launch))  # betamax is an array!
         betamax = betamax * stabfac  # otherwise integral diverges
+        if (betamax > self.inputdata["betamax"]).any():
+            betamax = stabfac * self.inputdata["betamax"] * np.ones(np.shape(betamax))
 
         betapow = 1.5
         beta_per_launch = int(self.inputdata["beta_per_fork"])  # number of dust particles = beta_per_launch * Nlaunch

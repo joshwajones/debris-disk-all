@@ -217,6 +217,8 @@ class DebrisDisk:
         # Compute orbital parameters of parent bodies
         self.e = np.sqrt(self.h ** 2 + self.k ** 2)
         self.I = np.sqrt(self.p ** 2 + self.q ** 2)
+        if "acoll" in self.inputdata:
+            self.a  = [float(self.inputdata["acoll"])]
         if self.inputdata["launchstyle"] == 7:
             R = self.inputdata["radius"]
             self.e = np.array([self.inputdata["ep"]])
@@ -229,10 +231,18 @@ class DebrisDisk:
                 self.Omega = np.array([self.inputdata["Omcoll"]])
             self.omega = np.array([0.0]) - self.Omega - f
             #self.omega = np.array([0.0])
+        elif self.inputdata["launchstyle"] == 8:
+            self.a = np.array([float(self.inputdata["acoll"])])
+            self.e = np.array([self.inputdata["ecoll"]])
+            self.Omega = np.array([0.0])
+            f = 0 # could be pi/2 or 0
+            self.Omega = np.array([0.0])
+            self.omega = np.array([0.0]) - self.Omega - f
         else:
             self.Omega = np.arctan2(self.p, self.q)
             pomega = np.arctan2(self.h, self.k)
             self.omega = pomega - self.Omega
+
         print(self.e, self.I, self.a, self.Omega, self.omega)
 
 
@@ -311,6 +321,10 @@ class DebrisDisk:
                 theta = self.inputdata["launch_angle"] * np.pi/180
                 cosfp = np.cos(theta) * np.ones(Nlaunch)
                 sinfp = np.sin(theta) * np.ones(Nlaunch)
+            elif self.inputdata["launchstyle"] == 8:
+                # all from quadrature
+                cosfp = np.zeros(Nlaunch)
+                sinfp = np.ones(Nlaunch)
             #initial: orbital elements of dust grains before applying radiation pressure
             self.a_initial = np.array(Nlaunch * [self.a[i]])
             self.e_initial = np.array(Nlaunch * [self.e[i]])
@@ -339,6 +353,7 @@ class DebrisDisk:
                         print(f"Computing {j}th dust grain...")
 
                     radius = self.a[i] * (1 - self.e[i] ** 2) / (1 + self.e[i] * cosfp[j])
+                    print(radius)
 
 
                     velocity = np.sqrt(consts.G * self.Mstar * (2 / radius - 1 / self.a[i]))

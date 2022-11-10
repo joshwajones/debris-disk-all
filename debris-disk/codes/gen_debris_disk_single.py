@@ -15,28 +15,28 @@ response = sys.argv[1]
 dd = debris_disk_single.DebrisDisk("../disk_input/%s.txt"%response)
 dd.AddSinglePlanet()
 #dd.ComputeParentSingle(manual=True, amin=62.6, amax=75.9, I0=0, e0=0.)
-# dd.ComputeParentSingle(Nparticles=1, coll_in_middle=True)
-# dd.ComputeParentOrbital()
-# #dd.ComputeDustGrains()
-# #dd.ComputeDustGrains_BetaOptimized()
-# dd.ComputeDustGrains_Optimized()
-# dd.OutputParentOrbit("../parentorbit/%s"%response)
-# #dd.OutputQbeta("../images/imgrid/400x400/%s"%response)
-# #dd.Plot3DOrbit()]
-# #
-# #
-# #
-# dd.ComputeBackgroundParentSingle_Optimized()
-# #dd.ComputeBackgroundParentSingle()
-# dd.ComputeBackgroundParentOrbital_Optimized()
-# #dd.ComputeBackgroundDustGrains()
-# #dd.ComputeBackgroundDustGrains_BetaOptimized2()
-# dd.ComputeBackgroundDustGrains_Optimized()
+dd.ComputeParentSingle(Nparticles=1, coll_in_middle=True)
+dd.ComputeParentOrbital()
+#dd.ComputeDustGrains()
+#dd.ComputeDustGrains_BetaOptimized()
+dd.ComputeDustGrains_Optimized()
+dd.OutputParentOrbit("../parentorbit/%s"%response)
+#dd.OutputQbeta("../images/imgrid/400x400/%s"%response)
+#dd.Plot3DOrbit()]
+#
+#
+#
+dd.ComputeBackgroundParentSingle_Optimized()
+#dd.ComputeBackgroundParentSingle()
+dd.ComputeBackgroundParentOrbital_Optimized()
+#dd.ComputeBackgroundDustGrains()
+#dd.ComputeBackgroundDustGrains_BetaOptimized2()
+dd.ComputeBackgroundDustGrains_Optimized()
 
 # dd.ComputeForkParentSingle()
 # dd.ComputeForkParentOrbital()
 # dd.ComputeForkDustGrains()
-dd.ComputeForkDust_Optimized3(response)
+# dd.ComputeForkDust_Optimized3(response)
 
 #dd.Plot_pqhk()
 #dd.Plot3DOrbit()

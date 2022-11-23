@@ -2047,14 +2047,17 @@ class DebrisDisk:
 
         print("Computing Background Parent Orbits (single planet)...")
         if self.freeelem:
+            print("IF")
             self.a, self.I0, self.e0, self.Omega0, self.omega0 = np.loadtxt(self.freeelemtxt, unpack=True)
         elif manual:
+            print('ELIF MANUAL')
             self.a = np.linspace(amin, amax, int(self.inputdata["Nback"]))
             self.I0 = I0
             self.e0 = e0
             self.Omega0 = Omega0
             self.omega0 = omega0
         else:
+            print("ELSE")
             if self.inputdata["InnerPlanet"] == 1:
                 amin = self.ap * (1 + 2.0 * (self.Mp * consts.Mearth / self.Mstar) ** (2. / 7.))
                 if self.inputdata["OuterPlanet"] == 0:
@@ -2149,6 +2152,8 @@ class DebrisDisk:
             self.k = efree * np.cos(omega + Omega) + self.k0
             self.p = Ifree * np.sin(Omega) + self.p0
             self.q = Ifree * np.cos(Omega) + self.q0
+        print("MIN, MAX", amin, amax)
+        # 0.02
 
 
     def ComputeBackgroundParentSingle(self, manual=False, Nback=500, amin=4., amax=6., I0=5. * (np.pi / 180.), e0=0.2,
@@ -2273,6 +2278,13 @@ class DebrisDisk:
         self.e_vals = e_vals
         self.f_vals = f_vals
         self.inv_map = inv_map
+        print("BACKGROUND OMEGA: ", self.Omega)
+        for _ in range(10):
+            print('--------------------------------------')
+        print(self.I)
+        for _ in range(10):
+            print('--------------------------------------')
+        print(self.e)
         
 
 

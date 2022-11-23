@@ -243,7 +243,7 @@ class DebrisDisk:
             pomega = np.arctan2(self.h, self.k)
             self.omega = pomega - self.Omega
 
-        print(self.e, self.I, self.a, self.Omega, self.omega)
+        #print(self.e, self.I, self.a, self.Omega, self.omega)
 
 
 
@@ -353,7 +353,7 @@ class DebrisDisk:
                         print(f"Computing {j}th dust grain...")
 
                     radius = self.a[i] * (1 - self.e[i] ** 2) / (1 + self.e[i] * cosfp[j])
-                    print(radius)
+                    #print(radius)
 
 
                     velocity = np.sqrt(consts.G * self.Mstar * (2 / radius - 1 / self.a[i]))
@@ -2278,13 +2278,13 @@ class DebrisDisk:
         self.e_vals = e_vals
         self.f_vals = f_vals
         self.inv_map = inv_map
-        print("BACKGROUND OMEGA: ", self.Omega)
-        for _ in range(10):
-            print('--------------------------------------')
-        print(self.I)
-        for _ in range(10):
-            print('--------------------------------------')
-        print(self.e)
+        # print("BACKGROUND OMEGA: ", self.Omega)
+        # for _ in range(10):
+        #     print('--------------------------------------')
+        # print(self.I)
+        # for _ in range(10):
+        #     print('--------------------------------------')
+        # print(self.e)
         
 
 

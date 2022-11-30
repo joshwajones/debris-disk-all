@@ -325,6 +325,11 @@ class DebrisDisk:
                 # all from quadrature
                 cosfp = np.zeros(Nlaunch)
                 sinfp = np.ones(Nlaunch)
+            elif self.inputdata["launchstyle"] == 9:
+                # all from quadrature
+                cosfp = np.zeros(Nlaunch)
+                sinfp = -1 * np.ones(Nlaunch)
+
             #initial: orbital elements of dust grains before applying radiation pressure
             self.a_initial = np.array(Nlaunch * [self.a[i]])
             self.e_initial = np.array(Nlaunch * [self.e[i]])

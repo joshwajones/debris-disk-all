@@ -326,7 +326,7 @@ class DebrisDisk:
                 cosfp = np.zeros(Nlaunch)
                 sinfp = np.ones(Nlaunch)
             elif self.inputdata["launchstyle"] == 9:
-                # all from quadrature
+                # all from other quadrature
                 cosfp = np.zeros(Nlaunch)
                 sinfp = -1 * np.ones(Nlaunch)
 
@@ -384,8 +384,14 @@ class DebrisDisk:
                         velocity_orbplane = [1, dydx, 0]
                         ratio_ = velocity / np.linalg.norm(velocity_orbplane)
                         velocity_orbplane = [v * ratio_ for v in velocity_orbplane]
-                        if cosfp[j] < 0:
+                        if cosfp[j] < 0: #cosfp or sinfp?
                             velocity_orbplane = [-1 * v for v in velocity_orbplane]
+                        # dydx = (cosfp[j] + self.e[i]) / (sinfp[j])
+                        # velocity_orbplane = [-1, dydx, 0]
+                        # ratio_ = velocity / np.linalg.norm(velocity_orbplane)
+                        # velocity_orbplane = [v * ratio_ for v in velocity_orbplane]
+                        # if sinfp[j] < 0:  # cosfp or sinfp?
+                        #     velocity_orbplane = [-1 * v for v in velocity_orbplane]
 
                     # print(old_orbplane)
                     # print(velocity_orbplane)
@@ -1048,9 +1054,9 @@ class DebrisDisk:
         # omega_launch = np.ones(Nlaunch)*-1.*np.pi/4.
         # omega_launch = np.random.uniform(0., 2.*np.pi, Nlaunch)
         Omega_launch = np.random.uniform(0., 2. * np.pi, Nlaunch)
-        if "exp_C" or "exp_D" or "exp_E" in self.inputdata:
+        if "exp_C" or "exp_D" or "exp_E" or "exp_F" in self.inputdata:
             # Laplace-Lagrange collisional family modification
-            if "exp_C" in self.inputdata:
+            if "exp_C" in self.inputdata or "exp_F" in self.inputdata:
                 ecc_forced = 0.3
             elif "exp_E" in self.inputdata:
                 ecc_forced = 0.7
@@ -1076,8 +1082,8 @@ class DebrisDisk:
             f_launch = np.random.uniform(-np.pi / 2., np.pi / 2., Nlaunch)
         elif "exp_D" in self.inputdata:
             f_launch = np.random.uniform(-np.pi, np.pi, Nlaunch)
-        elif "exp_E" in self.inputdata:
-            f_launch = np.random.uniform(-np.pi / 20., np.pi / 20., Nlaunch) 
+        elif "exp_E" in self.inputdata or "exp_F" in self.inputdata:
+            f_launch = np.random.uniform(-np.pi / 20., np.pi / 20., Nlaunch)
         else:
             f_launch = np.random.uniform(0., 2. * np.pi, Nlaunch)
         cosf_launch = np.cos(f_launch)

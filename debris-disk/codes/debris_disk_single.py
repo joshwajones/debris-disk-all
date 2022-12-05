@@ -1046,7 +1046,10 @@ class DebrisDisk:
         code_start = time.time()
         # launch sites --- NO radiation pressure
         Nlaunch = int(self.inputdata["Nfork"])
-        I_launch = np.ones(Nlaunch) * 0.05
+        Ifork = 0.05
+        if 'Ifork' in self.inputdata:
+            Ifork = self.inputdata['Ifork']
+        I_launch = np.ones(Nlaunch) * Ifork 
         #a_launch = np.ones(Nlaunch) * 200.
         #e_launch = np.ones(Nlaunch) * 0.7
         a_launch = np.ones(Nlaunch) * self.inputdata["afork"]

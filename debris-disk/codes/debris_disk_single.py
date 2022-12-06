@@ -1045,11 +1045,13 @@ class DebrisDisk:
     def ComputeForkDust_Optimized3(self, fileName):
         code_start = time.time()
         # launch sites --- NO radiation pressure
+        if "Nfork" not in self.inputdata:
+            return 
         Nlaunch = int(self.inputdata["Nfork"])
         Ifork = 0.05
         if 'Ifork' in self.inputdata:
             Ifork = self.inputdata['Ifork']
-        I_launch = np.ones(Nlaunch) * Ifork 
+        I_launch = np.ones(Nlaunch) * Ifork
         #a_launch = np.ones(Nlaunch) * 200.
         #e_launch = np.ones(Nlaunch) * 0.7
         a_launch = np.ones(Nlaunch) * self.inputdata["afork"]

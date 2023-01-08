@@ -220,6 +220,7 @@ class DebrisDisk:
         if "acoll" in self.inputdata:
             self.a  = [float(self.inputdata["acoll"])]
         if self.inputdata["launchstyle"] == 7:
+            print('2222222')
             R = self.inputdata["radius"]
             self.e = np.array([self.inputdata["ep"]])
             e = np.array([self.inputdata["ecoll"]])
@@ -243,7 +244,8 @@ class DebrisDisk:
             pomega = np.arctan2(self.h, self.k)
             self.omega = pomega - self.Omega
 
-        #print(self.e, self.I, self.a, self.Omega, self.omega)
+        print(self.e, self.I, self.a, self.Omega, self.omega)
+        print("------------")
 
 
 

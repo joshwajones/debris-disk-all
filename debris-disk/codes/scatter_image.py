@@ -19,7 +19,7 @@ use_compHG = True
 
 
 def MakeImage_altonly(dustfile, d=10, maxa=100., aspect_ratio=1., resolution=0.05, L=1., g=0.5, Ndust=100, obsincl=5.,
-              obsazim=0., fixbeta=0., verbose=False, every_x_print=1):
+              obsazim=0., fixbeta=0., verbose=False, every_x_print=1, thermal=False, wavelength=1000):
     # dustfile = name of the file containint dust orbital parameters
     # d = distance to the disk in pc
     # maxa = maximum horizontal lengthscale covered by the image in AU
@@ -65,6 +65,7 @@ def MakeImage_altonly(dustfile, d=10, maxa=100., aspect_ratio=1., resolution=0.0
         f, fweight = ppo.OutputPosition(e[i], Npts=Ndust)
         end_interp = time.time()
         interp_time += end_interp - start_interp
+
         # radius at each point
         rad_start = time.time()
         Rd = (a[i] * (1 - e[i] ** 2) / (1 + e[i] * np.cos(f)))
@@ -90,7 +91,18 @@ def MakeImage_altonly(dustfile, d=10, maxa=100., aspect_ratio=1., resolution=0.0
         alt_time += alt_end - alt_start
 
         scatter_start = time.time()
-        if not use_compHG:
+        if thermal:
+            c_1 = 1.5
+            s = c_1 / beta[i]
+            emissivity = min(1, 2 * np.pi * c_1 / (beta[i] * wavelength))
+
+            Tk = 450.4 * np.power(Rd, -0.5)
+            check = 0.0013 * s * Tk
+            Tk2 = 500.7 * np.power(Rd, -0.4) * np.power(s, -0.2)
+            Tk = np.where(check >= 1, Tk, Tk2)
+
+            intensity_alt = (L * consts.Lsun / 4. / np.pi) * Tk * emissivity * (s ** 2)
+        elif not use_compHG:
             intensity_alt = (L * consts.Lsun / 4. / np.pi / (Rd * consts.au2cm) ** 2) * HG(-Yd_alt, g) * (
                         beta[i] * 10) ** -2
         else:
@@ -98,45 +110,14 @@ def MakeImage_altonly(dustfile, d=10, maxa=100., aspect_ratio=1., resolution=0.0
                         beta[i] * 10) ** -2
         scatter_end = time.time()
         scatter_time += scatter_end - scatter_start
+
         # for every sample point associated with an orbit
         search_start = time.time()
         inc_x = 2 * maxa / d / Npix_x
         inc_y = 2 * maxa / d / Npix_y
         for r, x_alt, z_alt, idust_alt in zip(Rd, Xd_alt, Zd_alt, intensity_alt):
-
-            # Xind_alt = np.searchsorted(imx, x_alt * r / d)
-            # Zind_alt = np.searchsorted(imy, z_alt * r / d)
-            #imx = np.linspace(-maxa / d, maxa / d, Npix_x)
-            # x_idx = x_alt * r / d / inc + Npix_x / 2
-            # if x_idx < Npix_x / 2:
-            #     x_idx_round = math.floor(x_idx)
-            # else:
-            #     x_idx_round = math.floor(x_alt * r / d  /inc + Npix_x/2)
-            # print()
-            # print(x_alt * r / d )
-            # print(Xind_alt)
-            Xind_alt = find_idx(imx, x_alt, r, d, inc_x, Npix_x) #UNCOMMENT
-            # # if x_idx_round != Xind_alt:
-            # #     print(i, x_alt*r/d, x_idx_round, Xind_alt)
-            # #     pdb.set_trace()
-            #
-            Zind_alt = find_idx(imy, z_alt, r, d, inc_y, Npix_y) #UNCOMMENT
-            
-            # if z_idx_round != Zind_alt:
-            #     print(i, z_alt*r/d, z_idx_round, Zind_alt)
-            #     pdb.set_trace()
-
-            # if i == 10000:
-            #
-            #     print(Ndust)
-            #     #print(f)
-            #     print(r)
-            #     #print(imx)
-            #     #print(imy)
-            #     print(x_alt * r / d, Xind_alt, x_idx)
-            #     print(z_alt * r / d, Zind_alt)
-            #     #print(idust_alt)
-            #     pdb.set_trace()
+            Xind_alt = find_idx(imx, x_alt, r, d, inc_x, Npix_x)
+            Zind_alt = find_idx(imy, z_alt, r, d, inc_y, Npix_y)
             if Zind_alt < Npix_y and Xind_alt < Npix_x:
                 image_alt[Zind_alt, Xind_alt] += idust_alt
         search_end = time.time()
@@ -147,14 +128,12 @@ def MakeImage_altonly(dustfile, d=10, maxa=100., aspect_ratio=1., resolution=0.0
     print("Alt calculations:      ", alt_time)
     print("Scattering phase function calculations:     ", scatter_time)
     print("Searching array:     ", search_time)
-
     return image_alt
 
 def find_idx(im, coord, r, d, inc, Npix):
     idx = coord * r / d / inc + Npix / 2
     if idx >= Npix:
-        #print(idx)
-        return Npix# or Npix?
+        return Npix
     elif idx < 0:
         return 0
     f, c = math.floor(idx), math.ceil(idx)
@@ -165,10 +144,6 @@ def find_idx(im, coord, r, d, inc, Npix):
         return c
     else:
         return c+1
-
-    # if im[f] <= coord:
-    #     return c
-    #return f
 
 
 
@@ -188,6 +163,7 @@ def MakeImage(dustfile, d=10, maxa=100., aspect_ratio=1., resolution=0.05, L=1.,
     obsazim *= np.pi/180.
     
     #set up image grid
+    print('BEGINNING')
     Npix_x = int((2*maxa/d)/resolution)
     Npix_y = int((2*maxa/d)*aspect_ratio/resolution)
     imx = np.linspace(-maxa/d, maxa/d, Npix_x)

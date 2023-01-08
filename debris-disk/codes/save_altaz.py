@@ -32,6 +32,7 @@ if len(sys.argv) > 8:
     every_print = int(sys.argv[8])
     verbose = True
 
+thermal = True
 include_depth = False
 include_azfirst = False
 alt_only = True
@@ -48,7 +49,7 @@ if include_depth:
 elif alt_only:
     Image_alt = scatter_image.MakeImage_altonly("../dustorbit/%s_dustorbit.txt"%fstr, aspect_ratio=ar,
                                                             resolution=0.1, obsincl=alt,maxa=maxa,d=d,obsazim=az,Ndust=Nd,
-                                                            fixbeta=0, verbose=verbose, every_x_print=every_print,)
+                                                            fixbeta=0, verbose=verbose, every_x_print=every_print, thermal=thermal)
 
 else:
     Image_alt, Image_az = scatter_image.MakeImage("../dustorbit/%s_dustorbit.txt" % fstr, aspect_ratio=ar,

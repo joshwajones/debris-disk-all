@@ -102,7 +102,7 @@ def MakeImage_altonly(dustfile, d=10, maxa=100., aspect_ratio=1., resolution=0.0
             Tk = np.where(check >= 1, Tk, Tk2)
 
             # intensity_alt = (L * consts.Lsun / 4. / np.pi) * Tk * emissivity * (s ** 2)
-            intensity_alt = Tk * emissivity * (s ** 2) / ( 1.0e5)
+            intensity_alt = Tk * emissivity * (s ** 2) / ( 1.0e2)
         elif not use_compHG:
             intensity_alt = (L * consts.Lsun / 4. / np.pi / (Rd * consts.au2cm) ** 2) * HG(-Yd_alt, g) * (
                         beta[i] * 10) ** -2

@@ -32,7 +32,7 @@ if len(sys.argv) > 8:
     every_print = int(sys.argv[8])
     verbose = True
 
-thermal = True
+thermal = 2
 include_depth = False
 include_azfirst = False
 alt_only = True

@@ -7,7 +7,7 @@ Mar. 31st 2016
 """
 
 import numpy as np
-import matplotlib.pyplot as pl
+# import matplotlib.pyplot as pl
 import scatter_image
 import sys
 import time
@@ -32,7 +32,14 @@ if len(sys.argv) > 8:
     every_print = int(sys.argv[8])
     verbose = True
 
-thermal = 2
+thermal = 0
+if len(sys.argv) > 9:
+    thermal = int(sys.argv[9])
+
+wavelength = 1000
+if len(sys.argv) > 10:
+    wavelength = int(sys.argv[10])
+# thermal = 2
 include_depth = False
 include_azfirst = False
 alt_only = True
@@ -49,7 +56,7 @@ if include_depth:
 elif alt_only:
     Image_alt = scatter_image.MakeImage_altonly("../dustorbit/%s_dustorbit.txt"%fstr, aspect_ratio=ar,
                                                             resolution=0.1, obsincl=alt,maxa=maxa,d=d,obsazim=az,Ndust=Nd,
-                                                            fixbeta=0, verbose=verbose, every_x_print=every_print, thermal=thermal)
+                                                            fixbeta=0, verbose=verbose, every_x_print=every_print, thermal=thermal, wavelength=wavelength)
 
 else:
     Image_alt, Image_az = scatter_image.MakeImage("../dustorbit/%s_dustorbit.txt" % fstr, aspect_ratio=ar,

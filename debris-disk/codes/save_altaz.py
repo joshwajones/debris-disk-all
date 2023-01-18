@@ -32,14 +32,16 @@ if len(sys.argv) > 8:
     every_print = int(sys.argv[8])
     verbose = True
 
-thermal = 0
+SPF = 4
 if len(sys.argv) > 9:
-    thermal = int(sys.argv[9])
+    SPF = int(sys.argv[9])
 
 wavelength = 1000
 if len(sys.argv) > 10:
     wavelength = int(sys.argv[10])
-# thermal = 2
+
+# maxa (400), d (10), fstr (name), alt, az, ar (1), Nd (100), print (1000), SPF (4?), wavelength (1000?)
+
 include_depth = False
 include_azfirst = False
 alt_only = True
@@ -56,7 +58,7 @@ if include_depth:
 elif alt_only:
     Image_alt = scatter_image.MakeImage_altonly("../dustorbit/%s_dustorbit.txt"%fstr, aspect_ratio=ar,
                                                             resolution=0.1, obsincl=alt,maxa=maxa,d=d,obsazim=az,Ndust=Nd,
-                                                            fixbeta=0, verbose=verbose, every_x_print=every_print, thermal=thermal, wavelength=wavelength)
+                                                            fixbeta=0, verbose=verbose, every_x_print=every_print, SPF=SPF, wavelength=wavelength)
 
 else:
     Image_alt, Image_az = scatter_image.MakeImage("../dustorbit/%s_dustorbit.txt" % fstr, aspect_ratio=ar,

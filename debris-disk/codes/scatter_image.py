@@ -15,12 +15,21 @@ import math
 
 HG = lambda mu, g: (1./4./np.pi)*(1-g**2)/(1+g**2-2*g*mu)**1.5
 compHG = lambda mu: 0.643*HG(mu,0.995) + 0.176*HG(mu,0.665) + 0.181*HG(mu,0.035)    #G Ring fit
+mock_IR_compHG = lambda mu: 0.513*HG(mu,0.995) + 0.176*HG(mu,0.665) + 0.311*HG(mu,0.035)    #mock IR SPF adjustment
 
 use_compHG = True
 
 
+# SPF:
+# 1: Rayleigh-Jeans
+# 2: Planck function
+# 3: HG
+# 4: compHG
+# 5: mock IR
+
+
 def MakeImage_altonly(dustfile, d=10, maxa=100., aspect_ratio=1., resolution=0.05, L=1., g=0.5, Ndust=100, obsincl=5.,
-              obsazim=0., fixbeta=0., verbose=False, every_x_print=1, thermal=False, wavelength=1000):
+              obsazim=0., fixbeta=0., verbose=False, every_x_print=1, SPF=4, wavelength=1000):
     # dustfile = name of the file containint dust orbital parameters
     # d = distance to the disk in pc
     # maxa = maximum horizontal lengthscale covered by the image in AU
@@ -92,7 +101,13 @@ def MakeImage_altonly(dustfile, d=10, maxa=100., aspect_ratio=1., resolution=0.0
         alt_time += alt_end - alt_start
 
         scatter_start = time.time()
-        if thermal == 1:  # Rayleigh-Jeans approximation
+        # SPF:
+        # 1: Rayleigh-Jeans
+        # 2: Planck function
+        # 3: HG
+        # 4: compHG
+        # 5: mock IR
+        if SPF == 1:  # Rayleigh-Jeans approximation
             c_1 = 1.5
             s = c_1 / beta[i]
             emissivity = min(1, 2 * np.pi * c_1 / (beta[i] * wavelength))
@@ -104,7 +119,7 @@ def MakeImage_altonly(dustfile, d=10, maxa=100., aspect_ratio=1., resolution=0.0
 
             # intensity_alt = (L * consts.Lsun / 4. / np.pi) * Tk * emissivity * (s ** 2)
             intensity_alt = Tk * emissivity * (s ** 2) / ( 1.0e2)
-        elif thermal == 2:  # Planck function
+        elif SPF == 2:  # Planck function
             c_1 = 1.5
             s = c_1 / beta[i]
             emissivity = min(1, 2 * np.pi * c_1 / (beta[i] * wavelength))
@@ -115,12 +130,15 @@ def MakeImage_altonly(dustfile, d=10, maxa=100., aspect_ratio=1., resolution=0.0
             Tk = np.where(check >= 1, Tk, Tk2)
 
             intensity_alt = ((np.exp(14391.0 / (Tk * wavelength)) - 1.0) ** (-1)) * emissivity * (s ** 2) / (1.0e2)
-        elif not use_compHG:
+        elif SPF == 3: #HG
             intensity_alt = (L * consts.Lsun / 4. / np.pi / (Rd * consts.au2cm) ** 2) * HG(-Yd_alt, g) * (
                         beta[i] * 10) ** -2
-        else:
+        elif SPF == 4: # compHG
             intensity_alt = (L * consts.Lsun / 4. / np.pi / (Rd * consts.au2cm) ** 2) * compHG(-Yd_alt) * (
                         beta[i] * 10) ** -2
+        else: #SPF = 5, mock IR:
+            intensity_alt = (L * consts.Lsun / 4. / np.pi / (Rd * consts.au2cm) ** 2) * mock_IR_compHG(-Yd_alt) * (
+                    beta[i] * 10) ** -2
         scatter_end = time.time()
         scatter_time += scatter_end - scatter_start
 

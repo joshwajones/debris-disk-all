@@ -1,5 +1,5 @@
 """
-Function to make a single 
+Function to make a single
 scattered light image
 
 @author: Eve J. Lee
@@ -134,6 +134,7 @@ def MakeImage_altonly(dustfile, d=10, maxa=100., aspect_ratio=1., resolution=0.0
             intensity_alt = (L * consts.Lsun / 4. / np.pi / (Rd * consts.au2cm) ** 2) * HG(-Yd_alt, g) * (
                         beta[i] * 10) ** -2
         elif SPF == 4: # compHG
+
             intensity_alt = (L * consts.Lsun / 4. / np.pi / (Rd * consts.au2cm) ** 2) * compHG(-Yd_alt) * (
                         beta[i] * 10) ** -2
         else: #SPF = 5, mock IR:
@@ -192,7 +193,7 @@ def MakeImage(dustfile, d=10, maxa=100., aspect_ratio=1., resolution=0.05, L=1.,
     #viewing angle
     obsincl *= np.pi/180.
     obsazim *= np.pi/180.
-    
+
     #set up image grid
     print('BEGINNING')
     Npix_x = int((2*maxa/d)/resolution)
@@ -207,13 +208,13 @@ def MakeImage(dustfile, d=10, maxa=100., aspect_ratio=1., resolution=0.05, L=1.,
 
     #load dust orbits
     if fixbeta == 0:
-        a, e, I, Omega, omega, beta = np.loadtxt(dustfile, unpack=True)    
+        a, e, I, Omega, omega, beta = np.loadtxt(dustfile, unpack=True)
     else:
-        a, e, I, Omega, omega = np.loadtxt(dustfile, unpack=True)    
+        a, e, I, Omega, omega = np.loadtxt(dustfile, unpack=True)
         beta = np.ones(len(a))*fixbeta
- 
+
     for i in range(len(a)): #for each dust grain
-        if verbose and i % every_x_print == 0: 
+        if verbose and i % every_x_print == 0:
                 print("Inc:%4.2f, Az:%4.2f, %i out of %i"%(obsincl*180./np.pi, obsazim*180./np.pi, i+1, len(a)))
 
         #samples Npts = Ndust = 100 (default) true anomalies by selecting mean anomalies uniformly
@@ -230,14 +231,14 @@ def MakeImage(dustfile, d=10, maxa=100., aspect_ratio=1., resolution=0.05, L=1.,
         Xd_alt = Xdraw*np.cos(obsazim)-Ydraw*np.sin(obsazim)
         Yd_alt = Xdraw*np.sin(obsazim)*np.cos(obsincl)+Ydraw*np.cos(obsazim)*np.cos(obsincl)-Zdraw*np.sin(obsincl)
         Zd_alt = Xdraw*np.sin(obsazim)*np.sin(obsincl)+Ydraw*np.cos(obsazim)*np.sin(obsincl)+Zdraw*np.cos(obsincl)
-        
+
         Xd_az = Xdraw*np.cos(obsazim)-Ydraw*np.cos(obsincl)*np.sin(obsazim)+Zdraw*np.sin(obsincl)*np.sin(obsazim)
         Yd_az = Xdraw*np.sin(obsazim)+Ydraw*np.cos(obsincl)*np.cos(obsazim)-Zdraw*np.sin(obsincl)*np.cos(obsazim)
         Zd_az = Ydraw*np.sin(obsincl)+Zdraw*np.cos(obsincl)
 
         if not use_compHG:
             intensity_alt = (L*consts.Lsun/4./np.pi/(Rd*consts.au2cm)**2)*HG(-Yd_alt, g)*(beta[i]*10)**-2
-            
+
             intensity_az = (L*consts.Lsun/4./np.pi/(Rd*consts.au2cm)**2)*HG(-Yd_az, g)*(beta[i]*10)**-2
         else:
             intensity_alt = (L*consts.Lsun/4./np.pi/(Rd*consts.au2cm)**2)*compHG(-Yd_alt)*(beta[i]*10)**-2
@@ -257,13 +258,13 @@ def MakeImage(dustfile, d=10, maxa=100., aspect_ratio=1., resolution=0.05, L=1.,
                 if include_depth:
                     col_density[Zind_alt, Xind_alt] += 1
                     opt_depth[Zind_alt, Xind_alt] += 1 / (beta[i] ** 2)
-            
+
             Xind_az = np.searchsorted(imx, x_az*r/d)
             Zind_az = np.searchsorted(imy, z_az*r/d)
             if Zind_az < Npix_y and Xind_az < Npix_x:
                 image_az[Zind_az, Xind_az] += idust_az
-    if include_depth: 
+    if include_depth:
         return image_alt, image_az, col_density, opt_depth
     else:
         return image_alt, image_az
-    
+

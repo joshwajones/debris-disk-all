@@ -12,6 +12,8 @@ import scatter_image
 import sys
 import time
 
+# python save_altaz.py 400 10 name 100 10000 2 1000
+
 start_time = time.time()
 maxa = np.float(sys.argv[1])
 d = np.float(sys.argv[2]) 

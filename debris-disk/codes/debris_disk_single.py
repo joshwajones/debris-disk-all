@@ -16,9 +16,7 @@ import prob_position_orbit as ppo
 import consts
 import pdb
 import math
-import datetime
 import time
-import random
 import scipy.integrate as sint
 import scipy.interpolate as si
 
@@ -205,11 +203,11 @@ class DebrisDisk:
 
     def ComputeParentOrbital(self):
         # Compute orbital parameters of parent body
+        # I changed this over time, so I'm not sure how much still works.
+        # I would definitely recommend using launchstyle = 7 (input radius and angle of collision directly)
         self.e = np.sqrt(self.h ** 2 + self.k ** 2)
         self.I = np.sqrt(self.p ** 2 + self.q ** 2)
-        if "acoll" in self.inputdata:
-            self.a = [float(self.inputdata["acoll"])]
-        if self.inputdata["launchstyle"] == 7: # custom input
+        if self.inputdata["launchstyle"] == 7: # custom input. Should work
             R = self.inputdata["radius"]
             e = np.array([self.inputdata["ecoll"]])
             self.e = e
@@ -219,18 +217,19 @@ class DebrisDisk:
             if "Omcoll" in self.inputdata:
                 self.Omega = np.array([self.inputdata["Omcoll"]])
             self.omega = np.array([0.0]) - self.Omega - f
-
-        elif self.inputdata["launchstyle"] == 8: # quadrature 1
+        elif self.inputdata["launchstyle"] == 8: # quadrature 1. Probably works
             self.a = np.array([float(self.inputdata["acoll"])])
             self.e = np.array([self.inputdata["ecoll"]])
             self.Omega = np.array([0.0])
             f = 0 # could be pi/2 or 0
             self.Omega = np.array([0.0])
             self.omega = np.array([0.0]) - self.Omega - f
-        else:
+        else: # Might not work
             self.Omega = np.arctan2(self.p, self.q)
             pomega = np.arctan2(self.h, self.k)
             self.omega = pomega - self.Omega
+            if "acoll" in self.inputdata:
+                self.a = [float(self.inputdata["acoll"])]
 
         if self.verbose:
             print("e = ", self.e)
@@ -241,18 +240,16 @@ class DebrisDisk:
             print("------------------------")
 
 
-    def ComputeDustGrains_Optimized(self, manual=False, beta=0.3, Nlaunch=10):
+    def ComputeDustGrains(self, manual=False, beta=0.3, Nlaunch=10):
         # Compute orbital parameters of launched dust grains
         # beta = Prad/Pgrav
         # Nlaunch = launch points per parent body orbit
-        # print("Computing Dust Grain Orbits...")
-        # ct = datetime.datetime.now()
-        # print("current time:-", ct)
+
         start_time = time.time()
         if manual:
             self.beta = beta
             Nlaunch = Nlaunch
-        elif self.inputdata["betadistrb"] == 0:
+        elif self.inputdata["betadistrb"] == 0: # flag for whether beta values should be
             self.beta = self.inputdata["beta"]
             Nlaunch = int(self.inputdata["Nlaunch"])
             self.beta_dust = np.ones((len(self.h), Nlaunch)) * self.beta
@@ -265,6 +262,7 @@ class DebrisDisk:
         self.beta_bounded = False
         if ("beta_bounded" in self.inputdata and self.inputdata["beta_bounded"] == 1) or ("beta_change" in self.inputdata and self.inputdata["beta_change"] == 1):
             self.beta_bounded = True
+
         self.a_dust = np.zeros((len(self.h), Nlaunch))  # len(self.h) is NParticles - this is Nparticles x Nlaunch array
         self.e_dust = np.zeros((len(self.h), Nlaunch))
         self.I_dust = np.zeros((len(self.h), Nlaunch))
@@ -278,38 +276,39 @@ class DebrisDisk:
         beta_calcs_time = 0
         beta_application_time = 0
         time_in_func = 0
-        for i in range(len(self.h)):  # for each parent body
+        for i in range(len(self.h)):
             print("%i/%i parent body" % (i + 1, len(self.h)))
             if self.inputdata["launchstyle"] == 1:
-                # uniform in f
+                # launch sites uniform in f. May not be supported
                 fp = nr.uniform(0, 2*np.pi, Nlaunch)
                 lps[i] = fp
                 cosfp = np.cos(fp)
                 sinfp = np.sin(fp)
             elif self.inputdata["launchstyle"] == 2:
-                # uniform in cosf
+                # uniform in cosf. May not be supported
                 cosfp = nr.uniform(-1, 1) * np.ones(Nlaunch)
                 sinfp = nr.uniform(-1, 1) * np.ones(Nlaunch)
             elif self.inputdata["launchstyle"] == 3:
-                # uniform in M
+                # uniform in M. May not be supported
                 f, fweight = ppo.OutputPosition(self.e[i], Npts=Nlaunch)  # ??
                 lps[i] = f
                 cosfp = np.cos(f)
                 sinfp = np.sin(f)
             elif self.inputdata["launchstyle"] == 4:
-                # all at peri
+                # all at peri. Probably supported
                 cosfp = np.ones(Nlaunch)
                 sinfp = np.zeros(Nlaunch)
             elif self.inputdata["launchstyle"] == 5:
-                # all from quadrature
+                # all from quadrature. Probably supported
                 cosfp = np.zeros(Nlaunch)
                 sinfp = -1 * np.ones(Nlaunch)
             elif self.inputdata["launchstyle"] == 6:
-                # all at apo
+                # all at apo. Probably supported.
                 cosfp = -1 * np.ones(Nlaunch)
                 sinfp = np.zeros(Nlaunch)
             elif self.inputdata["launchstyle"] == 7:
-                # variable launch angle
+                # variable launch angle. Definitely supported - I would recommend using this option.
+                # the other options worked at some point, but I'm not sure about now...
                 theta = self.inputdata["launch_angle"] * np.pi/180
                 cosfp = np.cos(theta) * np.ones(Nlaunch)
                 sinfp = np.sin(theta) * np.ones(Nlaunch)
@@ -318,7 +317,7 @@ class DebrisDisk:
                 cosfp = np.zeros(Nlaunch)
                 sinfp = np.ones(Nlaunch)
             elif self.inputdata["launchstyle"] == 9:
-                # all from other quadrature
+                # all from other quadrature. I don't know why it's here twice
                 cosfp = np.zeros(Nlaunch)
                 sinfp = -1 * np.ones(Nlaunch)
 
@@ -342,33 +341,14 @@ class DebrisDisk:
                 P2 = self.get_p2_matrix(I=self.I[i])
                 P3 = self.get_p3_matrix(om=self.Omega[i])
                 M = P3 @ P2 @ P1 # M matrix translates coordinates from orbital plane to equatorial system
-
                 end_matrices = time.time()
                 matrix_time += end_matrices - start_matrices
-                for j in range(len(self.a_dust[i])): #for each dust particle launched from this parent body, l
+                for j in range(len(self.a_dust[i])): #for each dust particle launched from this parent body
                     if self.verbose and j % self.print_every_x_dust == 0:
                         print(f"Computing {j}th dust grain...")
 
                     radius = self.a[i] * (1 - self.e[i] ** 2) / (1 + self.e[i] * cosfp[j])
-                    #print(radius)
-
-
                     velocity = np.sqrt(consts.G * self.Mstar * (2 / radius - 1 / self.a[i]))
-
-
-                    # drdt = self.a[i] * (1 - self.e[i] ** 2) * self.e[i] * sinfp[j] / ((1 + self.e[i] * cosfp[j]) ** 2)
-                    # if abs(-1 * radius * sinfp[j] + drdt * cosfp[j]) < 1e-40:
-                    #     if cosfp[j] > 0:
-                    #         velocity_orbplane = [0, velocity, 0]
-                    #     else:
-                    #         velocity_orbplane = [0, -velocity, 0]
-                    # else:
-                    #     dydx = (radius * cosfp[j] - drdt * sinfp[j]) / (-1 * radius * sinfp[j] + drdt * cosfp[j])
-                    #     velocity_orbplane = [1, dydx, 0]
-                    #     ratio_ = velocity / np.linalg.norm(velocity_orbplane)
-                    #     velocity_orbplane = [v * ratio_ for v in velocity_orbplane]
-                    #
-                    # old_orbplane = np.array(list(velocity_orbplane))
                     if abs(sinfp[j]) < 1e-40:
                         velocity_orbplane = [0, cosfp[j] * velocity, 0]
                     else:
@@ -376,36 +356,13 @@ class DebrisDisk:
                         velocity_orbplane = [1, dydx, 0]
                         ratio_ = velocity / np.linalg.norm(velocity_orbplane)
                         velocity_orbplane = [v * ratio_ for v in velocity_orbplane]
-                        if cosfp[j] < 0: #cosfp or sinfp?
+                        if cosfp[j] < 0:
                             velocity_orbplane = [-1 * v for v in velocity_orbplane]
-                        # dydx = (cosfp[j] + self.e[i]) / (sinfp[j])
-                        # velocity_orbplane = [-1, dydx, 0]
-                        # ratio_ = velocity / np.linalg.norm(velocity_orbplane)
-                        # velocity_orbplane = [v * ratio_ for v in velocity_orbplane]
-                        # if sinfp[j] < 0:  # cosfp or sinfp?
-                        #     velocity_orbplane = [-1 * v for v in velocity_orbplane]
-
-                    # print(old_orbplane)
-                    # print(velocity_orbplane)
-                    # print(velocity_orbplane/np.linalg.norm(velocity_orbplane))
-                    # pdb.set_trace()
-
-
-
-
-
-
-
                     velocity_eq = M @ velocity_orbplane
                     coords_orbplane = [radius * cosfp[j], radius * sinfp[j], 0]
                     coords_eq = M @ coords_orbplane
 
-                    # print(velocity_eq)
-                    # print(coords_eq)
-                    # print(self.Omega[i])
-
-                    #hard-coding for double collision
-                    if "hardcode" in self.inputdata:
+                    if "hardcode" in self.inputdata: # hard-coded elements for double collision
                         if self.inputdata["hardcode"] == 1:
                             coords_eq = np.array([-radius * np.cos(self.I[i]), 0, -radius * np.sin(self.I[i])])
                             velocity_eq = np.array([0, -velocity, 0])
@@ -430,8 +387,9 @@ class DebrisDisk:
             ejecta_time += end_ejecta - start_ejecta
             start_beta_calcs = time.time()
 
+            # Update orbital information by including radiation pressure
             self.a_dust, self.e_dust, self.I_dust, self.Omega_dust, self.omega_dust, self.beta_dust = \
-                bd.OrbTimeCorr_MidOptimized(a_launch=self.a_initial, e_launch=self.e_initial, I_launch=self.I_initial,
+                bd.OrbTimeCorr(a_launch=self.a_initial, e_launch=self.e_initial, I_launch=self.I_initial,
                                             Omega_launch=self.Omega_initial, omega_launch=self.omega_initial, cosf_launch=self.cosf_initial,
                                             sinf_launch=self.sinf_initial, beta_per_launch=self.beta_per_launch, stabfac=self.stabfac, beta_limit=betamax)
             end_beta_calcs = time.time()
@@ -464,30 +422,27 @@ class DebrisDisk:
             self.beta_dust = self.beta_dust[goodi]
 
         self.SaveValues()
+        if self.verbose:
+            print("Dust grains computed.")
+            print("Time spent computing matrices:  ", matrix_time)
+            print("Time spent computing orbital elements and ejecta:  ", ejecta_time)
+            print("Time spent specifically in orb_elements function:    ", time_in_func)
+            print("Time spent computing betas:  ", beta_calcs_time)
+            end_time = time.time()
+            print("Total time: ", end_time - start_time)
+            print(len(self.a_dust))
 
-        print("Dust grains computed.")
-        print("Time spent computing matrices:  ", matrix_time)
-        print("Time spent computing orbital elements and ejecta:  ", ejecta_time)
-        print("Time spent specifically in orb_elements function:    ", time_in_func)
-        print("Time spent computing betas:  ", beta_calcs_time)
-        end_time = time.time()
-        print("Total time: ", end_time - start_time)
-        print(len(self.a_dust))
-
-    def ComputeForkDust_Optimized3(self, fileName):
+    def ComputeForkDust(self):
         code_start = time.time()
         # launch sites --- NO radiation pressure
+        if "Nfork" not in self.inputdata:
+            return
         Nlaunch = int(self.inputdata["Nfork"])
         I_launch = np.ones(Nlaunch) * 0.05
-        # a_launch = np.ones(Nlaunch) * 200.
-        # e_launch = np.ones(Nlaunch) * 0.7
         a_launch = np.ones(Nlaunch) * self.inputdata["afork"]
         e_launch = np.ones(Nlaunch) * self.inputdata["efork"]
-        # omega_launch = np.ones(Nlaunch)*-1.*np.pi/4.
-        # omega_launch = np.random.uniform(0., 2.*np.pi, Nlaunch)
         Omega_launch = np.random.uniform(0., 2. * np.pi, Nlaunch)
         if "exp_C" in self.inputdata:
-            # NEW CODE BLOCK
             # Laplace-Lagrange collisional family modification
             ecc_forced = 0.3
             pomega_forced = 0.
@@ -582,18 +537,10 @@ class DebrisDisk:
             # end for loop over j
 
         code_stop = time.time()
-        print('Number of dust particles = Nlaunch * beta_per_launch = ', Nlaunch * beta_per_launch)
-        print('Time to run code:', code_stop - code_start)
+        if self.verbose:
+            print('Number of dust particles = Nlaunch * beta_per_launch = ', Nlaunch * beta_per_launch)
+            print('Time to run code:', code_stop - code_start)
 
-        # omega_dust must be calculated before e_dust is updated!
-
-        # plt.hist(Q_dust[np.where(Q_dust < 2000)],bins=100)
-        # plt.hist(Q_dust[np.where(beta_dust > 0.47)],bins=1000)
-
-        # print(a_dust,e_dust,I_dust,Omega_dust,omega_dust)
-
-        # true_anom = np.random.uniform(0, 2. * np.pi,
-        #                               Nlaunch * beta_per_launch)  # JOSH: THIS LINE IS FOR CONVENIENCE AND SHOULD BE REPLACED BY A PROPER SOLUTION OF KEPLER'S EQUATION THAT SAMPLES MEAN ANOMALIES RANDOMLY AND THEN CONVERTS TO TRUE ANOMALIES.
         a_dust = a_dust.flatten()
         omega_dust = omega_dust.flatten()
         e_dust = e_dust.flatten()
@@ -601,37 +548,6 @@ class DebrisDisk:
         Omega_dust = Omega_dust.flatten()
         beta_dust = beta_dust.flatten()
 
-        # R = a_dust * (1 - e_dust ** 2) / (1. + e_dust * np.cos(true_anom))
-        # X = R * (np.cos(Omega_dust) * np.cos(omega_dust + true_anom) - np.sin(Omega_dust) * np.sin(
-        #     omega_dust + true_anom) * np.cos(I_dust))
-        # Y = R * (np.sin(Omega_dust) * np.cos(omega_dust + true_anom) + np.cos(Omega_dust) * np.sin(
-        #     omega_dust + true_anom) * np.cos(I_dust))
-        # Z = R * np.sin(omega_dust + true_anom) * np.sin(I_dust)
-        # np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + f"{fileName}_X.txt", X)
-        # np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + f"{fileName}_Y.txt", Y)
-        # np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + f"{fileName}_Z.txt", Z)
-
-        # mean_anom = np.random.uniform(0, 2.*np.pi, Nlaunch * beta_per_launch)
-        # true_anom = np.zeros(Nlaunch * beta_per_launch)
-        # for idx in range(len(mean_anom)):
-        #     if idx % 100 == 0:
-        #         print("IDX:  ", idx)
-        #     true_anom[idx], _ = ppo.OutputPosition(e=e_dust[idx], Npts=1)
-        #
-        # R = a_dust * (1 - e_dust ** 2) / (1. + e_dust * np.cos(true_anom))
-        # X = R * (np.cos(Omega_dust) * np.cos(omega_dust + true_anom) - np.sin(Omega_dust) * np.sin(
-        #     omega_dust + true_anom) * np.cos(I_dust))
-        # Y = R * (np.sin(Omega_dust) * np.cos(omega_dust + true_anom) + np.cos(Omega_dust) * np.sin(
-        #     omega_dust + true_anom) * np.cos(I_dust))
-        # Z = R * np.sin(omega_dust + true_anom) * np.sin(I_dust)
-        # np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + f"{fileName}_Xtrue.txt", X)
-        # np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + f"{fileName}_Ytrue.txt", Y)
-        # np.savetxt("/Users/sjosh/PycharmProjects/Research/img_2/debris-disk/parentorbit/" + f"{fileName}_Ztrue.txt", Z)
-        #
-        # plt.figure(figsize=(10, 4))
-        # plt.xlim([-2000, 1000])
-        # plt.ylim([-200, 200])
-        # plt.scatter(X, Z, s=0.01, color='black')
         self.a_dust = a_dust
         self.e_dust = e_dust
         self.I_dust = I_dust
@@ -640,14 +556,127 @@ class DebrisDisk:
         self.beta_dust = beta_dust
         self.SaveValues()
 
+    def ComputeBackgroundParentSingle(self, manual=False, Nback=500, amin=4., amax=6., I0=5. * (np.pi / 180.), e0=0.2,
+                                      Omega0=0., omega0=0., random=False):
+        # Compute p, q, h, k of parent bodies for background disk
+        # Nback: number of parent bodies
+        # amin, amax: min, max semi-major axes of parent bodies
+        # I0, e0: initial mutual inclination and eccentricities
+        # Omega0, omega0: initial nodal angle and argument of periapse
+        if "Nlaunchback" not in self.inputdata or "Nback" not in self.inputdata:
+            return
 
-    def ComputeBackgroundDustGrains_Optimized(self, manual=False, beta=0.3, Nlaunch=10):
+        print("Computing Background Parent Orbits (single planet)...")
+        if self.freeelem:
+            self.a, self.I0, self.e0, self.Omega0, self.omega0 = np.loadtxt(self.freeelemtxt, unpack=True)
+        elif manual:
+            self.a = np.linspace(amin, amax, int(self.inputdata["Nback"]))
+            self.I0 = I0
+            self.e0 = e0
+            self.Omega0 = Omega0
+            self.omega0 = omega0
+        else:
+            if self.inputdata["InnerPlanet"] == 1:
+                amin = self.ap * (1 + 2.0 * (self.Mp * consts.Mearth / self.Mstar) ** (2. / 7.))
+                if self.inputdata["OuterPlanet"] == 0:
+                    # amax = amin/(1-self.inputdata["awidth"])
+                    amax = amin * (1. + self.inputdata["awidth"])
+            if self.inputdata["OuterPlanet"] == 1:
+                amax = self.ap * (1 - 2.0 * (self.Mp * consts.Mearth / self.Mstar) ** (2. / 7.))
+                if self.inputdata["InnerPlanet"] == 0:
+                    amin = amax * (1 - self.inputdata["awidth"])
+
+            self.a = np.linspace(amin, amax, int(self.inputdata["Nback"]))
+
+            if not (self.inputdata["Random"]):
+                self.I0 = self.inputdata["I0"] * np.pi / 180.
+                self.e0 = self.inputdata["e0"]
+                self.Omega0 = self.inputdata["Omega0"] * np.pi / 180.
+                self.omega0 = self.inputdata["omega0"] * np.pi / 180.
+            elif not (self.inputdata["EndState"]):
+                if not (self.inputdata["SingleCollision"]):
+                    self.I0 = nr.uniform(0, self.inputdata["I0"] * np.pi / 180., int(self.inputdata["Nback"]))
+                    self.e0 = nr.uniform(0, self.inputdata["e0"], int(self.inputdata["Nback"]))
+                    self.Omega0 = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nback"]))
+                    self.omega0 = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nback"]))
+                else:
+                    self.I0 = nr.uniform(
+                        np.max((0, self.inputdata["Icent"] * np.pi / 180. - self.inputdata["I0"] * np.pi / 180.)), \
+                        self.inputdata["Icent"] * np.pi / 180. + self.inputdata["I0"] * np.pi / 180.,
+                        int(self.inputdata["Nback"]))
+                    self.e0 = nr.uniform(np.max((0, self.inputdata["ecent"] - self.inputdata["e0"])), \
+                                         self.inputdata["ecent"] + self.inputdata["e0"],
+                                         int(self.inputdata["Nback"]))
+                    self.Omega0 = nr.uniform(self.inputdata["Omcent"] - self.inputdata["Om0"], \
+                                             self.inputdata["Omcent"] + self.inputdata["Om0"],
+                                             int(self.inputdata["Nback"]))
+                    self.omega0 = nr.uniform(self.inputdata["omcent"] - self.inputdata["om0"], \
+                                             self.inputdata["omcent"] + self.inputdata["om0"],
+                                             int(self.inputdata["Nback"]))
+        self.A = ff.A(self.a, self.Mp[0], self.ap[0], Mstar=self.Mstar)
+        self.Aj = ff.Aj(self.a, self.Mp[0], self.ap[0], Mstar=self.Mstar)
+        self.B = ff.B(self.a, self.Mp[0], self.ap[0], Mstar=self.Mstar)
+        self.Bj = ff.Bj(self.a, self.Mp[0], self.ap[0], Mstar=self.Mstar)
+
+        # forced component
+        self.h0 = -(self.Aj / self.A) * self.ep[0] * np.sin(self.Omegap[0] + self.omegap[0])
+        self.k0 = -(self.Aj / self.A) * self.ep[0] * np.cos(self.Omegap[0] + self.omegap[0])
+        self.p0 = -(self.Bj / self.B) * self.Ip[0] * np.sin(self.Omegap[0])
+        self.q0 = -(self.Bj / self.B) * self.Ip[0] * np.cos(self.Omegap[0])
+
+        if not (self.inputdata["EndState"]):
+            Ifreesin = self.I0 * np.sin(self.Omega0)
+            Ifreecos = self.I0 * np.cos(self.Omega0)
+            efreesin = self.e0 * np.sin(self.Omega0 + self.omega0)
+            efreecos = self.e0 * np.cos(self.Omega0 + self.omega0)
+
+            Ifree = np.sqrt(Ifreesin ** 2 + Ifreecos ** 2)
+            gamma = np.arctan2(Ifreesin, Ifreecos)
+            efree = np.sqrt(efreesin ** 2 + efreecos ** 2)
+            beta = np.arctan2(efreesin, efreecos)
+
+            self.h = efree * np.sin(self.A * self.age + beta) + self.h0
+            self.k = efree * np.cos(self.A * self.age + beta) + self.k0
+            self.p = Ifree * np.sin(self.B * self.age + gamma) + self.p0
+            self.q = Ifree * np.cos(self.B * self.age + gamma) + self.q0
+        else:
+            e_vals = np.linspace(0, self.inputdata["e0"], self.num_e)
+            efree = np.zeros(int(self.inputdata["Nback"]))
+            for i in range(len(efree)):
+                e = e_vals[np.random.randint(0, len(e_vals))]
+                efree[i] = e
+            Ifree = nr.uniform(
+                np.max((0, self.inputdata["Icent"] * np.pi / 180. - self.inputdata["I0"] * np.pi / 180.)), \
+                self.inputdata["I0"] * np.pi / 180. + self.inputdata["Icent"] * np.pi / 180.,
+                int(self.inputdata["Nback"]))
+            omega = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nback"]))
+            Omega = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nback"]))
+            self.h = efree * np.sin(omega + Omega) + self.h0
+            self.k = efree * np.cos(omega + Omega) + self.k0
+            self.p = Ifree * np.sin(Omega) + self.p0
+            self.q = Ifree * np.cos(Omega) + self.q0
+
+    def ComputeBackgroundParentOrbital(self):
+        # Compute orbital parameters of parent bodies
+        self.Omega = np.arctan2(self.p, self.q)
+        pomega = np.arctan2(self.h, self.k)
+        self.omega = pomega - self.Omega
+        self.I = np.sqrt(self.p ** 2 + self.q ** 2)
+        self.e = np.sqrt(self.h ** 2 + self.k ** 2)
+        e_vals, f_vals, inv_map = bd.OrbTimeCorrBackground(e_set=set(self.e),
+                                                                           num_f=self.Nlaunchback,
+                                                                           n_beta_grid=50, betapow=1.5, betamin=0.001,
+                                                                           stabfac=self.stabfac_back)
+
+        self.e_vals = e_vals
+        self.f_vals = f_vals
+        self.inv_map = inv_map
+
+    def ComputeBackgroundDustGrains(self, manual=False, beta=0.3, Nlaunchback=10):
         # Compute orbital parameters of launched dust grains
         # beta = Prad/Pgrav
         # Nlaunch = launch points per parent body orbit
-        # print("Computing Dust Grain Orbits...")
-        # ct = datetime.datetime.now()
-        # print("current time:-", ct)
+
         if "Nlaunchback" not in self.inputdata or "Nback" not in self.inputdata:
             return
         print("Computing Background Dust Grain Orbits...")
@@ -673,19 +702,11 @@ class DebrisDisk:
 
         lps = np.zeros((len(self.h), Nlaunchback))
         mu = consts.G * self.Mstar
-        matrix_time = 0
-        ejecta_time = 0
-        beta_calcs_time = 0
-        beta_application_time = 0
-        time_in_func = 0
-
-
-
 
         for i in range(len(self.h)):  # for each parent body (Nback)
-            print("%i/%i background parent body" % (i + 1, len(self.h)))
+            if self.verbose:
+                print("%i/%i background parent body" % (i + 1, len(self.h)))
             fp = list(self.f_vals)
-            #fp = nr.uniform(0, 2 * np.pi, Nlaunchback)  # get random true anomaly for each
             lps[i] = fp
             cosfp = np.cos(fp)
             sinfp = np.sin(fp)
@@ -712,26 +733,12 @@ class DebrisDisk:
         self.omega_dust = self.omega_dust.flatten()
         self.beta_dust = self.beta_dust.flatten()
 
-
-
-
-
-
-
         uboundi = np.where(self.a_dust[:] < 0)[0]
         if len(uboundi) > 0 and self.inputdata["betadistrb"] != 0:
             pdb.set_trace()
 
         lps = lps.flatten()
         np.savetxt('launchpoints.txt', lps)
-
-        # self.a_dust = self.a_dust.flatten()
-        # self.e_dust = self.e_dust.flatten()
-        # self.I_dust = self.I_dust.flatten()
-        # self.Omega_dust = self.Omega_dust.flatten()
-        # self.omega_dust = self.omega_dust.flatten()
-        # self.beta_dust = self.beta_dust.flatten()
-
         uboundi = np.where(self.a_dust < 0)[0]
         if len(uboundi) == len(self.a_dust): pdb.set_trace()
         if len(uboundi) > 0:
@@ -742,127 +749,18 @@ class DebrisDisk:
             self.Omega_dust = self.Omega_dust[goodi]
             self.omega_dust = self.omega_dust[goodi]
             self.beta_dust = self.beta_dust[goodi]
-
         self.SaveValues()
 
-        print("Dust grains computed.")
-        # print("Time spent computing betas:  ", beta_calcs_time)
-        end_time = time.time()
-        print("Total time: ", end_time - start_time)
-        print(len(self.a_dust))
-
-    def ComputeBackgroundDustGrains_BetaOptimized2(self, manual=False, beta=0.3, Nlaunch=10):
-        # Compute orbital parameters of launched dust grains
-        # beta = Prad/Pgrav
-        # Nback: number of parent background orbits
-        # Nlaunchback = launch points per parent body orbit
-        if "Nlaunchback" not in self.inputdata or "Nback" not in self.inputdata:
-            return
-        print("Computing Background Dust Grain Orbits...")
-        start_time = time.time()
-        if manual:
-            self.beta = beta
-            Nlaunchback = Nlaunchback
-        elif self.inputdata["betadistrb"] == 0:
-            self.beta = self.inputdata["beta"]
-            Nlaunchback = int(self.inputdata["Nlaunchback"])
-            self.beta_dust = np.ones((len(self.h), Nlaunchback)) * self.beta
-        else:
-            Nlaunchback = int(self.inputdata["Nlaunchback"])
-            betapow = self.inputdata["betadistrb"]
-            betamin, betamax = self.inputdata["betamin"], self.inputdata["betamax"]
-            self.beta_dust = np.zeros((len(self.h), Nlaunchback))
-
-        self.a_dust = np.zeros((len(self.h), Nlaunchback))  # len(self.h) is Nback - this is Nback x Nlaunchback array
-        self.e_dust = np.zeros((len(self.h), Nlaunchback))
-        self.I_dust = np.zeros((len(self.h), Nlaunchback))
-        self.Omega_dust = np.zeros((len(self.h), Nlaunchback))
-        self.omega_dust = np.zeros((len(self.h), Nlaunchback))
-
-        lps = np.zeros((len(self.h), Nlaunchback))
-        mu = consts.G * self.Mstar
-        matrix_time = 0
-        ejecta_time = 0
-        beta_calcs_time = 0
-        beta_application_time = 0
-        time_in_func = 0
-        self.e_max=  0.02
-        self.cosf_max = 1
-        start_beta_calcs = time.time()
-        end_beta_calcs = time.time()
-        beta_calcs_time += end_beta_calcs - start_beta_calcs
-        for i in range(len(self.h)):  # for each parent body
-            print("%i/%i background parent body" % (i + 1, len(self.h)))
-            fp = nr.uniform(0, 2 * np.pi, Nlaunchback)  # get random true anomaly for each
-            lps[i] = fp
-            cosfp = np.cos(fp)
-            sinfp = np.sin(fp)
-
-
-            self.e_max = self.e[i]
-            self.cosf_max = np.max(cosfp)
-
-            start_beta_calcs = time.time()
-            inverseCDF = bd.get_inverse_CDF_stab(e=self.e_max, cosf=self.cosf_max, betapow=betapow,
-                                                 betamin=betamin, betamax=betamax, stabfac=self.stabfac_back, precision=500)
-
-            self.beta_dust[i] = bd.OrbTimeCorr_Vectorized(inverseCDF, Nlaunchback)
-            end_beta_calcs = time.time()
-            beta_calcs_time += end_beta_calcs - start_beta_calcs
-
-            start_beta_application_time = time.time()
-            self.a_dust[i, :] = (1 - self.beta_dust[i, :]) * self.a[i] * (1 - self.e[i] ** 2) / \
-                                (1 - self.e[i] ** 2 - 2 * self.beta_dust[i, :] * (1 + self.e[i] * cosfp))
-            self.e_dust[i, :] = np.sqrt(
-                self.e[i] ** 2 + 2 * self.beta_dust[i, :] * self.e[i] * cosfp + self.beta_dust[i, :] ** 2) / (
-                                        1 - self.beta_dust[i, :])
-            self.omega_dust[i, :] = self.omega[i] + np.arctan2(self.beta_dust[i, :] * sinfp,
-                                                               self.e[i] + self.beta_dust[i, :] * cosfp)
-
-            self.I_dust[i, :] = self.I[i]
-            self.Omega_dust[i, :] = self.Omega[i]
-
-            uboundi = np.where(self.a_dust[i, :] < 0)[0]
-            if len(uboundi) > 0 and self.inputdata["betadistrb"] != 0:
-                pdb.set_trace()
-            end_beta_application_time = time.time()
-            beta_application_time += end_beta_application_time - start_beta_application_time
-
-        lps = lps.flatten()
-        np.savetxt('launchpoints.txt', lps)
-
-        self.a_dust = self.a_dust.flatten()
-        self.e_dust = self.e_dust.flatten()
-        self.I_dust = self.I_dust.flatten()
-        self.Omega_dust = self.Omega_dust.flatten()
-        self.omega_dust = self.omega_dust.flatten()
-        self.beta_dust = self.beta_dust.flatten()
-
-        uboundi = np.where(self.a_dust < 0)[0]
-        if len(uboundi) == len(self.a_dust): pdb.set_trace()
-        if len(uboundi) > 0:
-            goodi = np.where(self.a_dust > 0)[0]
-            self.a_dust = self.a_dust[goodi]
-            self.e_dust = self.e_dust[goodi]
-            self.I_dust = self.I_dust[goodi]
-            self.Omega_dust = self.Omega_dust[goodi]
-            self.omega_dust = self.omega_dust[goodi]
-            self.beta_dust = self.beta_dust[goodi]
-
-        self.SaveValues()
-        print("Dust grains computed.")
-        print("Time spent computing matrices:  ", matrix_time)
-        print("Time spent computing betas:  ", beta_calcs_time)
-        print("Time applying radiation pressure formulae:    ", beta_application_time)
-        end_time = time.time()
-        print("Total time: ", end_time - start_time)
-        #print("Betamax:     ", approx_betamax)
+        if self.verbose:
+            print("Dust grains computed.")
+            end_time = time.time()
+            print("Total time: ", end_time - start_time)
+            print(len(self.a_dust))
 
 
     # Save parameters. Useful for persistence between primary and background disk
     def SaveValues(self):
         self.a_all.extend(self.a_dust)
-        #print(self.a_all)
         self.e_all.extend(self.e_dust)
         self.I_all.extend(self.I_dust)
         self.Omega_all.extend(self.Omega_dust)
@@ -955,315 +853,6 @@ class DebrisDisk:
         ax.set_position([0., 0., 1., 1.])
         fig.show()
 
-    def ComputeForkParentSingle(self, manual=False, Nback=500, amin=4., amax=6., I0=5. * (np.pi / 180.),
-                                                e0=0.2,
-                                                Omega0=0., omega0=0., random=False):
-        # Compute p, q, h, k of parent bodies for background disk
-        # Single planet only
-        # Nback: number of parent bodies
-        # amin, amax: min, max semi-major axes of parent bodies
-        # I0, e0: initial mutual inclination and eccentricities
-        # Omega0, omega0: initial nodal angle and argument of periapse
-        if "Nforkback" not in self.inputdata or "Nfork" not in self.inputdata:
-            return
-
-        Nfork = int(self.inputdata["Nfork"])
-        print("Computing Fork Parent Orbits (single planet)...")
-        self.a = self.inputdata["afork"] * np.ones(Nfork)
-        #self.a = np.array([self.inputdata["afork"] for _ in range(Nfork)])
-        self.Ifork = self.inputdata["Ifork"]
-        self.efork = self.inputdata["efork"]
-        self.Omega = np.linspace(0, 2 * np.pi, Nfork)
-        self.omega = -self.Omega
-
-
-        self.A = ff.A(self.a, self.Mp[0], self.ap[0], Mstar=self.Mstar)
-        self.Aj = ff.Aj(self.a, self.Mp[0], self.ap[0], Mstar=self.Mstar)
-        self.B = ff.B(self.a, self.Mp[0], self.ap[0], Mstar=self.Mstar)
-        self.Bj = ff.Bj(self.a, self.Mp[0], self.ap[0], Mstar=self.Mstar)
-
-        # forced component
-        self.h0 = -(self.Aj / self.A) * self.ep[0] * np.sin(self.Omegap[0] + self.omegap[0])
-        self.k0 = -(self.Aj / self.A) * self.ep[0] * np.cos(self.Omegap[0] + self.omegap[0])
-        self.p0 = -(self.Bj / self.B) * self.Ip[0] * np.sin(self.Omegap[0])
-        self.q0 = -(self.Bj / self.B) * self.Ip[0] * np.cos(self.Omegap[0])
-
-
-        # self.h = efree * np.sin(omega + Omega) + self.h0
-        # self.k = efree * np.cos(omega + Omega) + self.k0
-        # self.p = Ifree * np.sin(Omega) + self.p0
-        # self.q = Ifree * np.cos(Omega) + self.q0
-        self.h = self.h0
-        self.k = self.k0
-        self.p = self.p0
-        self.q = self.q0
-
-
-    def ComputeForkParentOrbital(self):
-        # Compute orbital parameters of parent bodies
-        # compare with what we expect
-        N = len(self.p)
-        self.Omega = np.random.uniform(0, 2*np.pi, N)
-        self.omega = np.zeros(N) - self.Omega
-        self.I = 0.05 * np.ones(N) #np.array([0.05])
-        self.e = 0.7 * np.ones(N) #np.array([0.7])
-        # self.Omega = np.arctan2(self.p, self.q)
-        # pomega = np.arctan2(self.h, self.k)
-        # self.omega = pomega - self.Omega
-        # self.I = np.sqrt(self.p ** 2 + self.q ** 2)
-        # self.e = np.sqrt(self.h ** 2 + self.k ** 2)
-
-    def ComputeBackgroundParentSingle_Optimized(self, manual=False, Nback=500, amin=4., amax=6., I0=5. * (np.pi / 180.), e0=0.2,
-                            Omega0=0., omega0=0., random=False):
-        # Compute p, q, h, k of parent bodies for background disk
-        # Single planet only
-        # Nback: number of parent bodies
-        # amin, amax: min, max semi-major axes of parent bodies
-        # I0, e0: initial mutual inclination and eccentricities
-        # Omega0, omega0: initial nodal angle and argument of periapse
-        if "Nlaunchback" not in self.inputdata or "Nback" not in self.inputdata:
-            return
-
-        print("Computing Background Parent Orbits (single planet)...")
-        if self.freeelem:
-            print("IF")
-            self.a, self.I0, self.e0, self.Omega0, self.omega0 = np.loadtxt(self.freeelemtxt, unpack=True)
-        elif manual:
-            print('ELIF MANUAL')
-            self.a = np.linspace(amin, amax, int(self.inputdata["Nback"]))
-            self.I0 = I0
-            self.e0 = e0
-            self.Omega0 = Omega0
-            self.omega0 = omega0
-        else:
-            print("ELSE")
-            if self.inputdata["InnerPlanet"] == 1:
-                amin = self.ap * (1 + 2.0 * (self.Mp * consts.Mearth / self.Mstar) ** (2. / 7.))
-                if self.inputdata["OuterPlanet"] == 0:
-                    # amax = amin/(1-self.inputdata["awidth"])
-                    amax = amin * (1. + self.inputdata["awidth"])
-            if self.inputdata["OuterPlanet"] == 1:
-                amax = self.ap * (1 - 2.0 * (self.Mp * consts.Mearth / self.Mstar) ** (2. / 7.))
-                if self.inputdata["InnerPlanet"] == 0:
-                    amin = amax * (1 - self.inputdata["awidth"])
-
-            self.a = np.linspace(amin, amax, int(self.inputdata["Nback"]))
-
-            if not (self.inputdata["Random"]):
-                self.I0 = self.inputdata["I0"] * np.pi / 180.
-                self.e0 = self.inputdata["e0"]
-                self.Omega0 = self.inputdata["Omega0"] * np.pi / 180.
-                self.omega0 = self.inputdata["omega0"] * np.pi / 180.
-            elif not (self.inputdata["EndState"]):
-                if not (self.inputdata["SingleCollision"]):
-                    self.I0 = nr.uniform(0, self.inputdata["I0"] * np.pi / 180., int(self.inputdata["Nback"]))
-                    self.e0 = nr.uniform(0, self.inputdata["e0"], int(self.inputdata["Nback"]))
-                    self.Omega0 = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nback"]))
-                    self.omega0 = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nback"]))
-                else:
-                    self.I0 = nr.uniform(
-                        np.max((0, self.inputdata["Icent"] * np.pi / 180. - self.inputdata["I0"] * np.pi / 180.)), \
-                        self.inputdata["Icent"] * np.pi / 180. + self.inputdata["I0"] * np.pi / 180.,
-                        int(self.inputdata["Nback"]))
-                    self.e0 = nr.uniform(np.max((0, self.inputdata["ecent"] - self.inputdata["e0"])), \
-                                         self.inputdata["ecent"] + self.inputdata["e0"],
-                                         int(self.inputdata["Nback"]))
-                    self.Omega0 = nr.uniform(self.inputdata["Omcent"] - self.inputdata["Om0"], \
-                                             self.inputdata["Omcent"] + self.inputdata["Om0"],
-                                             int(self.inputdata["Nback"]))
-                    self.omega0 = nr.uniform(self.inputdata["omcent"] - self.inputdata["om0"], \
-                                             self.inputdata["omcent"] + self.inputdata["om0"],
-                                             int(self.inputdata["Nback"]))
-        self.A = ff.A(self.a, self.Mp[0], self.ap[0], Mstar=self.Mstar)
-        self.Aj = ff.Aj(self.a, self.Mp[0], self.ap[0], Mstar=self.Mstar)
-        self.B = ff.B(self.a, self.Mp[0], self.ap[0], Mstar=self.Mstar)
-        self.Bj = ff.Bj(self.a, self.Mp[0], self.ap[0], Mstar=self.Mstar)
-
-        # forced component
-        self.h0 = -(self.Aj / self.A) * self.ep[0] * np.sin(self.Omegap[0] + self.omegap[0])
-        self.k0 = -(self.Aj / self.A) * self.ep[0] * np.cos(self.Omegap[0] + self.omegap[0])
-        self.p0 = -(self.Bj / self.B) * self.Ip[0] * np.sin(self.Omegap[0])
-        self.q0 = -(self.Bj / self.B) * self.Ip[0] * np.cos(self.Omegap[0])
-
-        if not (self.inputdata["EndState"]):
-            Ifreesin = self.I0 * np.sin(self.Omega0)
-            Ifreecos = self.I0 * np.cos(self.Omega0)
-            efreesin = self.e0 * np.sin(self.Omega0 + self.omega0)
-            efreecos = self.e0 * np.cos(self.Omega0 + self.omega0)
-
-            Ifree = np.sqrt(Ifreesin ** 2 + Ifreecos ** 2)
-            gamma = np.arctan2(Ifreesin, Ifreecos)
-            efree = np.sqrt(efreesin ** 2 + efreecos ** 2)
-            beta = np.arctan2(efreesin, efreecos)
-
-            self.h = efree * np.sin(self.A * self.age + beta) + self.h0
-            self.k = efree * np.cos(self.A * self.age + beta) + self.k0
-            self.p = Ifree * np.sin(self.B * self.age + gamma) + self.p0
-            self.q = Ifree * np.cos(self.B * self.age + gamma) + self.q0
-        else:
-            #num_f should be Nlaunchback? change parameters
-
-
-
-            # e_vals, f_vals, inv_map = bd.OrbTimeCorr_MidOptimized_Background(num_e=self.num_e,
-            #                                                                  max_e=self.inputdata["e0"],
-            #                                                                  num_f=self.Nlaunchback,
-            #                                                                  n_beta_grid=50, betapow=1.5, betamin=0.001,
-            #                                                                  stabfac=self.stabfac_back)
-            #
-            # self.e_vals = e_vals
-            # self.f_vals = f_vals
-            # self.inv_map = inv_map
-            e_vals = np.linspace(0, self.inputdata["e0"], self.num_e)
-            efree = np.zeros(int(self.inputdata["Nback"]))
-            for i in range(len(efree)):
-                e = e_vals[np.random.randint(0, len(e_vals))]
-                efree[i] = e
-            #efree = nr.uniform(0, self.inputdata["e0"], int(self.inputdata["Nback"]))
-            Ifree = nr.uniform(
-                np.max((0, self.inputdata["Icent"] * np.pi / 180. - self.inputdata["I0"] * np.pi / 180.)), \
-                self.inputdata["I0"] * np.pi / 180. + self.inputdata["Icent"] * np.pi / 180.,
-                int(self.inputdata["Nback"]))
-            #print(Ifree)
-            omega = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nback"]))
-            Omega = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nback"]))
-            self.h = efree * np.sin(omega + Omega) + self.h0
-            self.k = efree * np.cos(omega + Omega) + self.k0
-            self.p = Ifree * np.sin(Omega) + self.p0
-            self.q = Ifree * np.cos(Omega) + self.q0
-        print("MIN, MAX", amin, amax)
-        # 0.02
-
-
-    def ComputeBackgroundParentSingle(self, manual=False, Nback=500, amin=4., amax=6., I0=5. * (np.pi / 180.), e0=0.2,
-                            Omega0=0., omega0=0., random=False):
-        # Compute p, q, h, k of parent bodies for background disk
-        # Single planet only
-        # Nback: number of parent bodies
-        # amin, amax: min, max semi-major axes of parent bodies
-        # I0, e0: initial mutual inclination and eccentricities
-        # Omega0, omega0: initial nodal angle and argument of periapse
-        if "Nlaunchback" not in self.inputdata or "Nback" not in self.inputdata:
-            return
-
-        print("Computing Background Parent Orbits (single planet)...")
-        if self.freeelem:
-            self.a, self.I0, self.e0, self.Omega0, self.omega0 = np.loadtxt(self.freeelemtxt, unpack=True)
-        elif manual:
-            self.a = np.linspace(amin, amax, int(self.inputdata["Nback"]))
-            self.I0 = I0
-            self.e0 = e0
-            self.Omega0 = Omega0
-            self.omega0 = omega0
-        else:
-            if self.inputdata["InnerPlanet"] == 1:
-                amin = self.ap * (1 + 2.0 * (self.Mp * consts.Mearth / self.Mstar) ** (2. / 7.))
-                if self.inputdata["OuterPlanet"] == 0:
-                    # amax = amin/(1-self.inputdata["awidth"])
-                    amax = amin * (1. + self.inputdata["awidth"])
-            if self.inputdata["OuterPlanet"] == 1:
-                amax = self.ap * (1 - 2.0 * (self.Mp * consts.Mearth / self.Mstar) ** (2. / 7.))
-                if self.inputdata["InnerPlanet"] == 0:
-                    amin = amax * (1 - self.inputdata["awidth"])
-
-            self.a = np.linspace(amin, amax, int(self.inputdata["Nback"]))
-
-            if not (self.inputdata["Random"]):
-                self.I0 = self.inputdata["I0"] * np.pi / 180.
-                self.e0 = self.inputdata["e0"]
-                self.Omega0 = self.inputdata["Omega0"] * np.pi / 180.
-                self.omega0 = self.inputdata["omega0"] * np.pi / 180.
-            elif not (self.inputdata["EndState"]):
-                if not (self.inputdata["SingleCollision"]):
-                    self.I0 = nr.uniform(0, self.inputdata["I0"] * np.pi / 180., int(self.inputdata["Nback"]))
-                    self.e0 = nr.uniform(0, self.inputdata["e0"], int(self.inputdata["Nback"]))
-                    self.Omega0 = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nback"]))
-                    self.omega0 = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nback"]))
-                else:
-                    self.I0 = nr.uniform(
-                        np.max((0, self.inputdata["Icent"] * np.pi / 180. - self.inputdata["I0"] * np.pi / 180.)), \
-                        self.inputdata["Icent"] * np.pi / 180. + self.inputdata["I0"] * np.pi / 180.,
-                        int(self.inputdata["Nback"]))
-                    self.e0 = nr.uniform(np.max((0, self.inputdata["ecent"] - self.inputdata["e0"])), \
-                                         self.inputdata["ecent"] + self.inputdata["e0"],
-                                         int(self.inputdata["Nback"]))
-                    self.Omega0 = nr.uniform(self.inputdata["Omcent"] - self.inputdata["Om0"], \
-                                             self.inputdata["Omcent"] + self.inputdata["Om0"],
-                                             int(self.inputdata["Nback"]))
-                    self.omega0 = nr.uniform(self.inputdata["omcent"] - self.inputdata["om0"], \
-                                             self.inputdata["omcent"] + self.inputdata["om0"],
-                                             int(self.inputdata["Nback"]))
-        self.A = ff.A(self.a, self.Mp[0], self.ap[0], Mstar=self.Mstar)
-        self.Aj = ff.Aj(self.a, self.Mp[0], self.ap[0], Mstar=self.Mstar)
-        self.B = ff.B(self.a, self.Mp[0], self.ap[0], Mstar=self.Mstar)
-        self.Bj = ff.Bj(self.a, self.Mp[0], self.ap[0], Mstar=self.Mstar)
-
-        # forced component
-        self.h0 = -(self.Aj / self.A) * self.ep[0] * np.sin(self.Omegap[0] + self.omegap[0])
-        self.k0 = -(self.Aj / self.A) * self.ep[0] * np.cos(self.Omegap[0] + self.omegap[0])
-        self.p0 = -(self.Bj / self.B) * self.Ip[0] * np.sin(self.Omegap[0])
-        self.q0 = -(self.Bj / self.B) * self.Ip[0] * np.cos(self.Omegap[0])
-
-        if not (self.inputdata["EndState"]):
-            Ifreesin = self.I0 * np.sin(self.Omega0)
-            Ifreecos = self.I0 * np.cos(self.Omega0)
-            efreesin = self.e0 * np.sin(self.Omega0 + self.omega0)
-            efreecos = self.e0 * np.cos(self.Omega0 + self.omega0)
-
-            Ifree = np.sqrt(Ifreesin ** 2 + Ifreecos ** 2)
-            gamma = np.arctan2(Ifreesin, Ifreecos)
-            efree = np.sqrt(efreesin ** 2 + efreecos ** 2)
-            beta = np.arctan2(efreesin, efreecos)
-
-            self.h = efree * np.sin(self.A * self.age + beta) + self.h0
-            self.k = efree * np.cos(self.A * self.age + beta) + self.k0
-            self.p = Ifree * np.sin(self.B * self.age + gamma) + self.p0
-            self.q = Ifree * np.cos(self.B * self.age + gamma) + self.q0
-        else:
-            efree = nr.uniform(0, self.inputdata["e0"], int(self.inputdata["Nback"]))
-            Ifree = nr.uniform(
-                np.max((0, self.inputdata["Icent"] * np.pi / 180. - self.inputdata["I0"] * np.pi / 180.)), \
-                self.inputdata["I0"] * np.pi / 180. + self.inputdata["Icent"] * np.pi / 180.,
-                int(self.inputdata["Nback"]))
-            #print(Ifree)
-            omega = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nback"]))
-            Omega = nr.uniform(0, 2 * np.pi, int(self.inputdata["Nback"]))
-            self.h = efree * np.sin(omega + Omega) + self.h0
-            self.k = efree * np.cos(omega + Omega) + self.k0
-            self.p = Ifree * np.sin(Omega) + self.p0
-            self.q = Ifree * np.cos(Omega) + self.q0
-
-
-    def ComputeBackgroundParentOrbital(self):
-        # Compute orbital parameters of parent bodies
-        self.Omega = np.arctan2(self.p, self.q)
-        pomega = np.arctan2(self.h, self.k)
-        self.omega = pomega - self.Omega
-        self.I = np.sqrt(self.p ** 2 + self.q ** 2)
-        self.e = np.sqrt(self.h ** 2 + self.k ** 2)
-
-    def ComputeBackgroundParentOrbital_Optimized(self):
-        # Compute orbital parameters of parent bodies
-        self.Omega = np.arctan2(self.p, self.q)
-        pomega = np.arctan2(self.h, self.k)
-        self.omega = pomega - self.Omega
-        self.I = np.sqrt(self.p ** 2 + self.q ** 2)
-        self.e = np.sqrt(self.h ** 2 + self.k ** 2)
-        e_vals, f_vals, inv_map = bd.OrbTimeCorr_MidOptimized_Background_2(e_set=set(self.e),
-                                                                         num_f=self.Nlaunchback,
-                                                                         n_beta_grid=50, betapow=1.5, betamin=0.001,
-                                                                         stabfac=self.stabfac_back)
-
-        self.e_vals = e_vals
-        self.f_vals = f_vals
-        self.inv_map = inv_map
-        # print("BACKGROUND OMEGA: ", self.Omega)
-        # for _ in range(10):
-        #     print('--------------------------------------')
-        # print(self.I)
-        # for _ in range(10):
-        #     print('--------------------------------------')
-        # print(self.e)
 
 
 
@@ -1369,7 +958,7 @@ class DebrisDisk:
 
         if abs(ecc) < eps:  # circular
             if abs(I) < eps or abs(I - np.pi) < eps:  # equatorial
-                print("Circular, equatorial case")
+                # circular, equatorial
                 pdb.set_trace()
                 f = np.arccos(r0[0] / radius)
                 if v0[0] > 0:
@@ -1377,17 +966,15 @@ class DebrisDisk:
                 w = 0  # "periapsis" at launch
                 Omega = 0
             else:
-                print("Circular, inclined case")
+                # circular, inclined
                 pdb.set_trace()
                 f = np.arccos((node_vec @ r0) / (n * radius))
                 if r0[2] < 0:
                     f = 2 * np.pi - f
-                w = f # SUSPECT - w = 0? -f
+                w = f
                 Omega = np.arccos(n_x / n)
         else: # eccentric
             if abs(I) < eps or abs(I - np.pi) < eps: # equatorial
-                # print("Eccentric, equatorial case")
-                # pdb.set_trace()
                 Omega = 0  # convention
                 w = np.arctan2(e_vec[1], e_vec[0])
                 if np.cross(r0, v0)[2] < 0:

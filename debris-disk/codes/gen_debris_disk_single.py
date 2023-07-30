@@ -8,14 +8,14 @@ dd = debris_disk_single.DebrisDisk("../disk_input/%s.txt"%response)
 dd.AddSinglePlanet()
 dd.ComputeParentSingle(Nparticles=1, coll_in_middle=True)
 dd.ComputeParentOrbital()
-dd.ComputeDustGrains_Optimized()
+dd.ComputeDustGrains()
 dd.OutputParentOrbit("../parentorbit/%s"%response)
 
-dd.ComputeBackgroundParentSingle_Optimized()
-dd.ComputeBackgroundParentOrbital_Optimized()
-dd.ComputeBackgroundDustGrains_Optimized()
+dd.ComputeBackgroundParentSingle()
+dd.ComputeBackgroundParentOrbital()
+dd.ComputeBackgroundDustGrains()
 
-dd.ComputeForkDust_Optimized3(response)
+dd.ComputeForkDust()
 
 dd.OutputDustAndBackOrbit("../dustorbit/%s"%response)
 

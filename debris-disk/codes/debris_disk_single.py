@@ -1,9 +1,3 @@
-"""
-Debris disk class
-@author: Eve J. Lee
-Feb. 15th 2016
-"""
-
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as pl
 import fn_draw as fd
@@ -92,9 +86,16 @@ class DebrisDisk:
 
         self.MakePlanetArray()
 
+    def MakePlanetArray(self):
+        self.Mp = np.array(self.Mp)
+        self.ap = np.array(self.ap)
+        self.ep = np.array(self.ep)
+        self.Ip = np.array(self.Ip)
+        self.Omegap = np.array(self.Omegap)
+        self.omegap = np.array(self.omegap)
 
     def ComputeParentSingle(self, manual=False, amin=4., amax=6., Icoll=5. * (np.pi / 180.), ecoll=0.2,
-                            Omega0=0., omega0=0., fix_a=False, fixed_a=50, coll_in_middle=False):
+                            Omega0=0., omega0=0., fix_a=False, fixed_a=50, Nparticles=1, coll_in_middle=False):
         # Compute p, q, h, k of parent body
         # Single planet only
         # amin, amax: min, max semi-major axes of parent bodies
@@ -102,11 +103,13 @@ class DebrisDisk:
         # Omega0, omega0: initial nodal angle and argument of periapse
         # fix_a: flag for fixing all of the a-values of each particle (should only be one) to fixed_a
         # coll_in_middle: flag that determines whether the a value of the parent is constrained to be in the middle of amin, amax
+        if "Nlaunch" not in self.inputdata:
+            return
         print("Computing Parent Orbits (single planet)...")
         if self.freeelem:
             self.a, self.Icoll, self.ecoll, self.Omega0, self.omega0 = np.loadtxt(self.freeelemtxt, unpack=True)
         elif manual:
-            self.a = np.linspace(amin, amax, int(self.inputdata["Nparticles"]))
+            self.a = np.linspace(amin, amax, Nparticles)
             self.Icoll = Icoll
             self.ecoll = ecoll
             self.Omega0 = Omega0
@@ -205,6 +208,8 @@ class DebrisDisk:
         # Compute orbital parameters of parent body
         # I changed this over time, so I'm not sure how much still works.
         # I would definitely recommend using launchstyle = 7 (input radius and angle of collision directly)
+        if "Nlaunch" not in self.inputdata:
+            return
         self.e = np.sqrt(self.h ** 2 + self.k ** 2)
         self.I = np.sqrt(self.p ** 2 + self.q ** 2)
         if self.inputdata["launchstyle"] == 7: # custom input. Should work
@@ -245,7 +250,10 @@ class DebrisDisk:
         # beta = Prad/Pgrav
         # Nlaunch = launch points per parent body orbit
 
+
         start_time = time.time()
+        if "Nlaunch" not in self.inputdata:
+            return
         if manual:
             self.beta = beta
             Nlaunch = Nlaunch
@@ -430,7 +438,6 @@ class DebrisDisk:
             print("Time spent computing betas:  ", beta_calcs_time)
             end_time = time.time()
             print("Total time: ", end_time - start_time)
-            print(len(self.a_dust))
 
     def ComputeForkDust(self):
         code_start = time.time()
@@ -454,7 +461,6 @@ class DebrisDisk:
             k = k0 + ecc_free * np.sin(pomega_free)
             e_launch = np.sqrt(h ** 2 + k ** 2)
             pomega_launch = np.arctan2(k, h)
-            print(pomega_launch * 180. / np.pi)
         elif "exp_B" in self.inputdata:
             pomega_launch = np.random.uniform(-np.pi / 8., np.pi / 8., Nlaunch)
         else:
@@ -658,6 +664,8 @@ class DebrisDisk:
 
     def ComputeBackgroundParentOrbital(self):
         # Compute orbital parameters of parent bodies
+        if "Nlaunchback" not in self.inputdata or "Nback" not in self.inputdata:
+            return
         self.Omega = np.arctan2(self.p, self.q)
         pomega = np.arctan2(self.h, self.k)
         self.omega = pomega - self.Omega
@@ -755,7 +763,7 @@ class DebrisDisk:
             print("Dust grains computed.")
             end_time = time.time()
             print("Total time: ", end_time - start_time)
-            print(len(self.a_dust))
+            # print(len(self.a_dust))
 
 
     # Save parameters. Useful for persistence between primary and background disk

@@ -1,0 +1,6 @@
+maxa = 400
+d = 10
+fstr = anim_1_0 
+alt = 90
+az = 90
+ar = 1

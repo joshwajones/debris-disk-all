@@ -1,10 +1,3 @@
-"""
-Function to make a single
-scattered light image
-
-@author: Eve J. Lee
-Feb. 24th 2016
-"""
 import numpy as np
 import prob_position_orbit as ppo
 import consts

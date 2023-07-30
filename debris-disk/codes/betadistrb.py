@@ -1,11 +1,3 @@
-"""
-Functions drawing radiation beta 
-from different beta distributions
-
-@author: Eve J. Lee
-May 17th 2016
-"""
-
 import numpy as np
 import numpy.random as nr
 import scipy.integrate as sint
